@@ -30,25 +30,15 @@
 #ifdef SERVER
 #include <stdio.h>
 #ifdef _MSC_VER 
-//not #if defined(_WIN32) || defined(_WIN64) because we have strncasecmp in mingw
 #define strncasecmp _strnicmp
 #define strcasecmp _stricmp
 #endif
-#ifdef _WIN32
-#include <WS2tcpip.h>
-#include <tchar.h>
-#include <io.h>
-#define F_OK 0
-#define access _access
-#pragma comment(lib, "ws2_32.lib")
-#else // _WIN32
 #include <unistd.h>
 #include <errno.h>
 #include <netdb.h>
 #include <sys/socket.h>
 #include <sys/mman.h>
 #include <netinet/in.h>
-#endif // _WIN32
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
@@ -74,42 +64,9 @@ const char* reb_server_header_png =
         "Content-type: image/png\n"
         "\r\n";
 
-#ifdef _WIN32
-int sendBytes(SOCKET s, const void * buffer, int buflen){
-    int total = 0;
-    char *pbuf = (char*) buffer;
-    while (buflen > 0) {
-        int iResult = send(s, pbuf, buflen, 0);
-        if (iResult < 0) {
-            if (WSAGetLastError() == WSAEWOULDBLOCK) {
-                // optionally use select() to wait for the
-                // socket to have more space to write before
-                // calling send() again...
-                continue;
-            }
-
-            printf("send error: %d\n", WSAGetLastError());
-            return SOCKET_ERROR;
-        } else if (iResult == 0) {
-            printf("disconnected\n");
-            return 0;
-        } else {
-            pbuf += iResult;
-            buflen -= iResult;
-            total += iResult;
-        }
-    }
-
-    return total;
-}
-#endif // _WIN32
 
 
-#ifdef _WIN32
-static void reb_server_cerror(SOCKET clientS, char cause[]){
-#else //_WIN32
 static void reb_server_cerror(FILE *stream, char *cause){
-#endif //_WIN32
     char* buf = NULL;
     asprintf(&buf,  "HTTP/1.1 501 Not Implemented\n"
                     "Content-type: text/html\n"
@@ -122,12 +79,7 @@ static void reb_server_cerror(FILE *stream, char *cause){
                     "</body></html>\n"
                     , cause);
     printf("\nREBOUND Webserver error: %s\n", cause);
-#ifdef _WIN32
-    sendBytes(clientS, buf, strlen(buf));
-    closesocket(clientS); // close the Client Socket now that our Work is Complete.
-#else //_WIN32
     fwrite(buf, 1, strlen(buf), stream);
-#endif //_WIN32
     free(buf);
 }
 
@@ -204,11 +156,7 @@ static unsigned char * base64_decode(const unsigned char *src, size_t len, size_
 }
 
 
-#ifndef _WIN32
 void* reb_server_start(void* args){
-#else //_WIN32
-DWORD WINAPI reb_server_start(void* args){
-#endif // _WIN32
     struct reb_server_data* data = (struct reb_server_data*)args;
     struct reb_simulation* r = data->r;
 
@@ -223,7 +171,6 @@ DWORD WINAPI reb_server_start(void* args){
         }
     }
 
-#ifndef _WIN32
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
 
@@ -458,231 +405,6 @@ screenshot_finish:
     printf("Server shutting down...\n");
     return PTHREAD_CANCELED;
 
-#else // _WIN32
-
-
-    WSADATA wsa;
-    struct sockaddr_in server;
-    SOCKET clientS;
-    char method[BUFSIZE];
-    char uri[BUFSIZE];
-    char version[BUFSIZE];
-
-    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
-        printf("Winsock startup failed");
-        exit(1);
-    }
-
-    data->socket = socket(AF_INET, SOCK_STREAM, 0);
-    if (data->socket == INVALID_SOCKET) {
-        printf("Socket error\n");
-        exit(1);
-    }
-
-    server.sin_family = AF_INET;
-    server.sin_port = htons(data->port);
-    InetPton(AF_INET, _T("0.0.0.0"), &server.sin_addr);
-
-    int ret_bind = bind(data->socket, (struct sockaddr*)&server, sizeof(server)); // binding the Host Address and Port Number
-    if (ret_bind) {
-        char error_msg[BUFSIZE];
-        snprintf(error_msg, BUFSIZE, "Error binding to port %d. Port might be in use.\n", data->port);
-        reb_simulation_error(r, error_msg);
-        data->ready = -1;
-        return 1;
-    }
-
-    int ret_listen = listen(data->socket, AF_INET);
-    if (ret_listen){
-        printf("Listen error\n");
-        exit(1);
-    }
-    
-    printf("REBOUND Webserver listening on http://localhost:%d ...\n",data->port);
-
-    while(1){
-        data->ready = 1;
-        clientS = accept(data->socket, NULL, NULL);
-        if (clientS == INVALID_SOCKET) { // Accept will fail if main thread is closing socket.
-            return 1;
-        } 
-        // Receive entire request.
-        int recN = 0;
-        char* recbuf = malloc(BUFSIZE);
-        int recbufN = 0;
-        while((recN = recv(clientS, recbuf+recbufN, BUFSIZE, 0))>0){
-            recbufN += recN;
-            if (recN<BUFSIZE) break;
-            recbuf = realloc(recbuf, recbufN+BUFSIZE);
-        }
-
-        // Get method and uri
-        sscanf(recbuf, "%s %s %s\n", method, uri, version);
-        if (strcasecmp(method, "GET") && strcasecmp(method, "POST")) {
-            reb_server_cerror(clientS, "Method not Implemented");
-            continue;
-        }
-        
-        /* read (and ignore) the HTTP headers */
-        char* curLine = recbuf;
-        unsigned long content_length = 0;
-        while(curLine){
-            char* nextLine = strchr(curLine, '\n');
-            if (nextLine) *nextLine = '\0';
-            char cl[BUFSIZE];
-            int ni = sscanf(curLine, "Content-Length: %s\n", cl);
-            if (ni){
-                content_length = strtol(cl,NULL,10);
-            }
-            if (nextLine){
-                *nextLine = '\n';
-                curLine = nextLine+1;
-            }else{
-                break;
-            }
-        }
-        
-        // Only post data is needed, otherwise free here
-        if (strcasecmp(method, "POST")) {
-            free(recbuf);
-        }
-        
-        if (!strcasecmp(uri, "/simulation")) {
-            char* bufp = NULL;
-            size_t sizep;
-            data->need_copy = 1;
-            WaitForSingleObject(data->mutex, INFINITE);
-            reb_simulation_save_to_stream(r, &bufp,&sizep);
-            data->need_copy = 0;
-            ReleaseMutex(data->mutex);
-            sendBytes(clientS, reb_server_header, strlen(reb_server_header)); 
-            sendBytes(clientS, bufp, sizep);
-            free(bufp);
-        }else if (!strncasecmp(uri, "/keyboard/",10)) {
-            int key = 0;
-            const char* ok = "ok.";
-            sscanf(uri, "/keyboard/%d", &key);
-            int skip_default_keys = 0;
-            data->need_copy = 1;
-            WaitForSingleObject(data->mutex, INFINITE);
-            if (r->key_callback){
-                skip_default_keys = r->key_callback(r, key);
-            } 
-            data->need_copy = 0;
-            ReleaseMutex(data->mutex);
-            if (!skip_default_keys){
-                switch (key){
-                    case 'Q':
-                        data->r->status = REB_STATUS_USER;
-                        sendBytes(clientS, reb_server_header, strlen(reb_server_header)); 
-                        sendBytes(clientS, ok, strlen(ok));
-                        break;
-                    case ' ':
-                        if (data->r->status == REB_STATUS_PAUSED){
-                            printf("Resume.\n");
-                            data->r->status = REB_STATUS_RUNNING;
-                        }else if (data->r->status == REB_STATUS_RUNNING){
-                            printf("Pause.\n");
-                            data->r->status = REB_STATUS_PAUSED;
-                        }
-                        sendBytes(clientS, reb_server_header, strlen(reb_server_header)); 
-                        sendBytes(clientS, ok, strlen(ok));
-                        break;
-                    case 264: // down arrow
-                        if (data->r->status == REB_STATUS_PAUSED){
-                            data->r->status = REB_STATUS_SINGLE_STEP;
-                            printf("Step.\n");
-                        }
-                        sendBytes(clientS, reb_server_header, strlen(reb_server_header)); 
-                        sendBytes(clientS, ok, strlen(ok));
-                        break;
-                    case 267: // page down
-                        if (data->r->status == REB_STATUS_PAUSED){
-                            data->r->status = REB_STATUS_SINGLE_STEP - 50;
-                            printf("50 step.\n");
-                        }
-                        sendBytes(clientS, reb_server_header, strlen(reb_server_header)); 
-                        sendBytes(clientS, ok, strlen(ok));
-                        break;
-                    default:
-                        // reb_server_cerror(clientS, "Unknown key received.");
-                        continue;
-                        break;
-                }
-            }else{
-                sendBytes(clientS, reb_server_header, strlen(reb_server_header)); 
-                sendBytes(clientS, ok, strlen(ok));
-            }
-        }else if (!strcasecmp(uri, "/") || !strcasecmp(uri, "/index.html") || !strcasecmp(uri, "/rebound.html")) {
-            FILE *f = fopen("rebound.html", "rb");
-            if (f){
-                fseek(f, 0, SEEK_END);
-                long fsize = ftell(f);
-                fseek(f, 0, SEEK_SET);
-                char *buf = malloc(fsize);
-                fread(buf, fsize, 1, f);
-                fclose(f);
-                sendBytes(clientS, reb_server_header, strlen(reb_server_header)); 
-                sendBytes(clientS, buf, fsize); 
-                free(buf);
-            }else{
-                reb_server_cerror(clientS, "rebound.html not found in current directory. Try `make rebound.html`.");
-                continue;
-            }
-        }else if (!strcasecmp(uri, "/favicon.ico")) {
-                sendBytes(clientS, reb_server_header_png, strlen(reb_server_header_png)); 
-                sendBytes(clientS, reb_favicon_png, reb_favicon_len); 
-        }else if (!strcasecmp(uri, "/screenshot")) {
-            data->need_copy = 1;
-            WaitForSingleObject(data->mutex, INFINITE);
-            if (content_length==0){
-                printf("Received screenshot with size zero.");
-                goto screenshot_finish;
-            }
-            if (r->status != REB_STATUS_SCREENSHOT){
-                printf("Received screenshot but did not expect one.\n");
-                goto screenshot_finish;
-            }
-            if (data->screenshot) {
-                printf("Unable to receive screenshot as previous screenshot not freed.\n");
-                goto screenshot_finish;
-            }
-
-            char* dataURL = curLine; // Memory!
-
-            int rc_len = strlen(dataURL)+1;
-            char* base64 = strchr(dataURL, ',');
-            if (content_length != rc_len){
-                printf("Received screenshot with incorrect size.\n");
-                goto screenshot_finish;
-            }
-            if (!base64){
-                printf("Unable to decode received screenshot. Data not in dataURL format.\n");
-                goto screenshot_finish;
-            }
-            data->screenshot = base64_decode((unsigned char*)base64+1, strlen(base64+1), &data->N_screenshot);
-            if (!data->screenshot){
-                printf("An error occured while decoding the screenshot.\n");
-            }
-            data->r->status = REB_STATUS_PAUSED;
-screenshot_finish:
-            free(recbuf);
-            data->need_copy = 0;
-            ReleaseMutex(data->mutex);
-            const char* ok = "ok.";
-            sendBytes(clientS, reb_server_header, strlen(reb_server_header)); 
-            sendBytes(clientS, ok, strlen(ok));
-        }else{
-            reb_server_cerror(clientS, "Unsupported request.");
-            printf("URI: %s\n",uri);
-            continue;
-        }
-
-        closesocket(clientS);
-    }
-    WSACleanup();
-    return 0;
-#endif // _WIN32
 }
 
 #endif // SERVER
@@ -698,10 +420,6 @@ int reb_simulation_start_server(struct reb_simulation* r, int port){
         r->server_data = calloc(sizeof(struct reb_server_data),1);
         r->server_data->r = r;
         r->server_data->port = port;
-#ifdef _WIN32
-        r->server_data->mutex = CreateMutex(NULL, FALSE, NULL);
-        HANDLE thread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)reb_server_start, r->server_data, 0, NULL);
-#else // _WIN32
         if (pthread_mutex_init(&(r->server_data->mutex), NULL)){
             reb_simulation_error(r,"Mutex creation failed.");
             return -1;
@@ -711,7 +429,6 @@ int reb_simulation_start_server(struct reb_simulation* r, int port){
             reb_simulation_error(r, "Error creating server thread.");
             return -1;
         }
-#endif // _WIN32
         int maxwait = 100;
         while (r->server_data->ready==0 && maxwait){
             usleep(10000);
@@ -737,9 +454,6 @@ void reb_simulation_stop_server(struct reb_simulation* r){
 #ifdef SERVER
     if (r==NULL) return;
     if (r->server_data){
-#ifdef _WIN32
-        closesocket(r->server_data->socket); // Will cause thread to exit.
-#else // _WIN32
         close(r->server_data->socket); // Will cause thread to exit.
         int ret_cancel = pthread_cancel(r->server_data->server_thread);
         if (ret_cancel==ESRCH){
@@ -750,7 +464,6 @@ void reb_simulation_stop_server(struct reb_simulation* r){
         if (retval!=PTHREAD_CANCELED){
             printf("An error occured while cancelling server thread.\n");
         }
-#endif // _WIN32
         free(r->server_data);
         r->server_data = NULL;
     }

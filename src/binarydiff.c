@@ -182,11 +182,7 @@ int reb_binary_diff(char* buf1, size_t size1, char* buf2, size_t size2, char** b
                 }else if (output_option==1 || output_option==3){
                     const struct reb_binary_field_descriptor fd = reb_binary_field_descriptor_for_type(field1.type);
                     char* buf;
-#ifndef _WIN32
                     asprintf(&buf, "%s:\n\033[31m< ",fd.name);
-#else // _WIN32
-                    asprintf(&buf, "%s:\n< ",fd.name);
-#endif // _WIN32
                     if (bufp){
                         *bufp = realloc(*bufp, strlen(*bufp) + strlen(buf) + sizeof(char));
                         strcat(*bufp,buf);
@@ -195,11 +191,7 @@ int reb_binary_diff(char* buf1, size_t size1, char* buf2, size_t size2, char** b
                     }
                     free(buf);
                     output_stream_reb_type(fd.dtype, buf1+pos1, field1.size, bufp);
-#ifndef _WIN32
                     asprintf(&buf, "\033[0m\n");
-#else // _WIN32
-                    asprintf(&buf, "\n");
-#endif // _WIN32
                     if (bufp){
                         *bufp = realloc(*bufp, strlen(*bufp) + strlen(buf) + sizeof(char));
                         strcat(*bufp,buf);
@@ -243,11 +235,7 @@ int reb_binary_diff(char* buf1, size_t size1, char* buf2, size_t size2, char** b
             }else if (output_option==1 || output_option==3){
                 const struct reb_binary_field_descriptor fd = reb_binary_field_descriptor_for_type(field1.type);
                 char* buf;
-#ifndef _WIN32
                 asprintf(&buf, "%s:\n\033[31m< ",fd.name);
-#else // _WIN32
-                asprintf(&buf, "%s:\n< ",fd.name);
-#endif // _WIN32
                 if (bufp){
                     *bufp = realloc(*bufp, strlen(*bufp) + strlen(buf) + sizeof(char));
                     strcat(*bufp,buf);
@@ -256,11 +244,7 @@ int reb_binary_diff(char* buf1, size_t size1, char* buf2, size_t size2, char** b
                 }
                 free(buf);
                 output_stream_reb_type(fd.dtype, buf1+pos1, field1.size, bufp);
-#ifndef _WIN32
                 asprintf(&buf, "\033[0m\n---\n\033[32m> ");
-#else // _WIN32
-                asprintf(&buf, "\n---\n> ");
-#endif // _WIN32
                 if (bufp){
                     *bufp = realloc(*bufp, strlen(*bufp) + strlen(buf) + sizeof(char));
                     strcat(*bufp,buf);
@@ -269,11 +253,7 @@ int reb_binary_diff(char* buf1, size_t size1, char* buf2, size_t size2, char** b
                 }
                 free(buf);
                 output_stream_reb_type(fd.dtype, buf2+pos2, field2.size, bufp);
-#ifndef _WIN32
                 asprintf(&buf, "\033[0m\n");
-#else // _WIN32
-                asprintf(&buf, "\n");
-#endif // _WIN32
                 if (bufp){
                     *bufp = realloc(*bufp, strlen(*bufp) + strlen(buf) + sizeof(char));
                     strcat(*bufp,buf);
@@ -342,11 +322,7 @@ int reb_binary_diff(char* buf1, size_t size1, char* buf2, size_t size2, char** b
         }else if (output_option==1 || output_option==3){
             const struct reb_binary_field_descriptor fd = reb_binary_field_descriptor_for_type(field2.type);
             char* buf;
-#ifndef _WIN32
             asprintf(&buf, "%s:\n\033[32m> ",fd.name);
-#else // _WIN32
-            asprintf(&buf, "%s:\n> ",fd.name);
-#endif // _WIN32
             if (bufp){
                 *bufp = realloc(*bufp, strlen(*bufp) + strlen(buf) + sizeof(char));
                 strcat(*bufp,buf);
@@ -354,11 +330,7 @@ int reb_binary_diff(char* buf1, size_t size1, char* buf2, size_t size2, char** b
                 printf("%s",buf);
             }
             output_stream_reb_type(fd.dtype, buf2+pos2, field2.size, bufp);
-#ifndef _WIN32
             asprintf(&buf, "\033[0m\n");
-#else // _WIN32
-            asprintf(&buf, "\n");
-#endif // _WIN32
             if (bufp){
                 *bufp = realloc(*bufp, strlen(*bufp) + strlen(buf) + sizeof(char));
                 strcat(*bufp,buf);

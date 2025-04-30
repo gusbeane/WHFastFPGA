@@ -282,11 +282,7 @@ int reb_simulation_output_screenshot(struct reb_simulation* r, const char* filen
 
     // Release mutex so client can pull simulation
     if (r->server_data->mutex_locked_by_integrate){
-#ifdef _WIN32
-        ReleaseMutex(r->server_data->mutex);
-#else // _WIN32
         pthread_mutex_unlock(&(r->server_data->mutex));
-#endif // _WIN32
     }
 
     // Wait until screenshot arrives
@@ -299,11 +295,7 @@ int reb_simulation_output_screenshot(struct reb_simulation* r, const char* filen
             
     // Lock mutex again before continuing
     if (r->server_data->mutex_locked_by_integrate){
-#ifdef _WIN32
-        WaitForSingleObject(r->server_data->mutex, INFINITE);
-#else // _WIN32
         pthread_mutex_lock(&(r->server_data->mutex)); 
-#endif // _WIN32
     }
     
     r->status = r->server_data->status_before_screenshot;

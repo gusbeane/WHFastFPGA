@@ -23,9 +23,6 @@
  *
  */
 #define _NO_CRT_STDIO_INLINE // WIN32 to use _vsprintf_s
-#if defined(_WIN32) && defined(_MSC_VER)
-#pragma comment(lib, "legacy_stdio_definitions.lib")
-#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h> // for offsetof()
@@ -63,9 +60,6 @@
 #define MAX(a, b) ((a) < (b) ? (b) : (a))       ///< Returns the maximum of a and b
 #define STRINGIFY(s) str(s)
 #define str(s) #s
-#ifdef _WIN32
-void usleep(__int64 usec);
-#endif // _WIN32
 const int reb_max_messages_length = 1024;   // needs to be constant expression for array size
 const int reb_N_max_messages = 10;
 const char* reb_build_str = __DATE__ " " __TIME__;  // Date and time build string. 
@@ -846,11 +840,7 @@ static void* reb_simulation_integrate_raw(void* args){
             while (r->server_data->need_copy == 1){
                 usleep(10);
             }
-#ifdef _WIN32
-            WaitForSingleObject(r->server_data->mutex, INFINITE);
-#else // _WIN32
             pthread_mutex_lock(&(r->server_data->mutex)); 
-#endif // _WIN32
             r->server_data->mutex_locked_by_integrate = 1;
         }
 #endif //SERVER
@@ -867,11 +857,7 @@ static void* reb_simulation_integrate_raw(void* args){
 #endif //OPENGL
 #ifdef SERVER
         if (r->server_data){
-#ifdef _WIN32
-            ReleaseMutex(r->server_data->mutex);
-#else // _WIN32
             pthread_mutex_unlock(&(r->server_data->mutex));
-#endif // _WIN32
             r->server_data->mutex_locked_by_integrate = 0;
         }
 #endif //SERVER
@@ -952,104 +938,6 @@ void reb_free(void* p){
     free(p);
 }
 
-#ifdef _WIN32
-
-void PyInit_librebound() {};
-
-// Source: https://codebrowser.dev/glibc/glibc/stdlib/rand_r.c.html 
-int rand_r(unsigned int *seed) {
-     unsigned int next = *seed;
-     int result;
-
-     next *= 1103515245;
-     next += 12345;
-     result = (unsigned int) (next / 65536) % 2048;
-
-     next *= 1103515245;
-     next += 12345;
-     result <<= 10;
-     result ^= (unsigned int) (next / 65536) % 1024;
-
-     next *= 1103515245;
-     next += 12345;
-     result <<= 10;
-     result ^= (unsigned int) (next / 65536) % 1024;
-
-     *seed = next;
-
-     return result;
-}
-
-
-// Source: https://stackoverflow.com/a/40160038/115102
-#include <stdarg.h>
-int vasprintf(char **strp, const char *fmt, va_list ap) {
-    // _vscprintf tells you how big the buffer needs to be
-    int len = _vscprintf(fmt, ap);
-    if (len == -1) {
-        return -1;
-    }
-    size_t size = (size_t)len + 1;
-    char *str = malloc(size);
-    if (!str) {
-        return -1;
-    }
-    // _vsprintf_s is the "secure" version of vsprintf
-    int r = vsprintf_s(str, len + 1, fmt, ap);
-    if (r == -1) {
-        free(str);
-        return -1;
-    }
-    *strp = str;
-    return r;
-}
-int asprintf(char **strp, const char *fmt, ...) {
-    va_list ap;
-    va_start(ap, fmt);
-    int r = vasprintf(strp, fmt, ap);
-    va_end(ap);
-    return r;
-}
-
-// Source: https://stackoverflow.com/a/26085827/115102
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-#include <stdint.h> // portable: uint64_t   MSVC: __int64
-int gettimeofday(struct reb_timeval * tp, struct timezone * tzp)
-{
-    // Note: some broken versions only have 8 trailing zero's, the correct epoch has 9 trailing zero's
-    // This magic number is the number of 100 nanosecond intervals since January 1, 1601 (UTC)
-    // until 00:00:00 January 1, 1970
-    static const uint64_t EPOCH = ((uint64_t) 116444736000000000ULL);
-
-    SYSTEMTIME  system_time;
-    FILETIME    file_time;
-    uint64_t    time;
-
-    GetSystemTime( &system_time );
-    SystemTimeToFileTime( &system_time, &file_time );
-    time =  ((uint64_t)file_time.dwLowDateTime )      ;
-    time += ((uint64_t)file_time.dwHighDateTime) << 32;
-
-    tp->tv_sec  = (int64_t) ((time - EPOCH) / 10000000L);
-    tp->tv_usec = (int64_t) (system_time.wMilliseconds * 1000);
-    return 0;
-}
-
-// Source: https://stackoverflow.com/a/17283549/115102
-void usleep(__int64 usec)
-{
-    HANDLE timer;
-    LARGE_INTEGER ft;
-
-    ft.QuadPart = -(10*usec); // Convert to 100 nanosecond interval, negative value indicates relative time
-
-    timer = CreateWaitableTimer(NULL, TRUE, NULL);
-    SetWaitableTimer(timer, &ft, 0, NULL, NULL, 0);
-    WaitForSingleObject(timer, INFINITE);
-    CloseHandle(timer);
-}
-#endif // _WIN32
   
 #ifdef OPENMP
 void reb_omp_set_num_threads(int num_threads){

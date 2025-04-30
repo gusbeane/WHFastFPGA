@@ -103,12 +103,11 @@ next_field:
                     char* pointer = (char*)r + reb_binary_field_descriptor_list[i].offset;
                     if (fd.dtype == REB_POINTER_ALIGNED){
                         if (*(char**)pointer) free(*(char**)pointer);
-#if defined(_WIN32) || !defined(AVX512)
-                        // WHFast512 not supported on Windows!
+#if !defined(AVX512)
                         *(char**)pointer = malloc(sizeof(struct reb_particle_avx512));
 #else 
                         *(char**)pointer = aligned_alloc(64,sizeof(struct reb_particle_avx512));
-#endif // _WIN32
+#endif
                     }else{ // normal malloc
                         *(char**)pointer = realloc(*(char**)pointer, field.size);
                     }

@@ -97,9 +97,7 @@ void reb_collision_search(struct reb_simulation* const r){
             for (int gbz=-N_ghost_zcol; gbz<=N_ghost_zcol; gbz++){
                 // Loop over all particles
                 for (int i=0;i<N;i++){
-#ifndef OPENMP
                     if (reb_sigint > 1) return;
-#endif // OPENMP
                     int ip = i;
                     if (mercurius_map){
                         ip = mercurius_map[i];
@@ -171,9 +169,7 @@ void reb_collision_search(struct reb_simulation* const r){
             for (int gbz=-N_ghost_zcol; gbz<=N_ghost_zcol; gbz++){
                 // Loop over all particles
                 for (int i=0;i<N;i++){
-#ifndef OPENMP
                     if (reb_sigint > 1) return;
-#endif // OPENMP
                     int ip = i;
                     if (trace_map){
                         ip = trace_map[i];
@@ -263,9 +259,7 @@ void reb_collision_search(struct reb_simulation* const r){
             // Loop over all particles
 #pragma omp parallel for schedule(guided)
             for (int i=0;i<N;i++){
-#ifndef OPENMP
                 if (reb_sigint > 1) return;
-#endif // OPENMP
                 struct reb_particle p1 = particles[i];
                 struct reb_collision collision_nearest;
                 collision_nearest.p1 = i;
@@ -322,9 +316,7 @@ void reb_collision_search(struct reb_simulation* const r){
             // Loop over all particles
 #pragma omp parallel for schedule(guided)
             for (int i=0;i<N;i++){
-#ifndef OPENMP
                 if (reb_sigint > 1) return;
-#endif // OPENMP
                 struct reb_particle p1 = particles[i];
                 struct reb_collision collision_nearest;
                 collision_nearest.p1 = i;

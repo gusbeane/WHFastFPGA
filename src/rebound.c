@@ -54,9 +54,6 @@
 #include "communication_mpi.h"
 #endif
 #include "display.h"
-#ifdef OPENMP
-#include <omp.h>
-#endif
 #define MAX(a, b) ((a) < (b) ? (b) : (a))       ///< Returns the maximum of a and b
 #define STRINGIFY(s) str(s)
 #define str(s) #s
@@ -639,9 +636,6 @@ void reb_simulation_init(struct reb_simulation* r){
     r->N_tree_essential_recv = 0;             
     r->N_tree_essential_recv_max = 0;          
 #endif // MPI
-#ifdef OPENMP
-    printf("Using OpenMP with %d threads per node.\n",omp_get_max_threads());
-#endif // OPENMP
 }
 
 
@@ -939,11 +933,6 @@ void reb_free(void* p){
 }
 
   
-#ifdef OPENMP
-void reb_omp_set_num_threads(int num_threads){
-    omp_set_num_threads(num_threads);
-}
-#endif // OPENMP
 
 const char* reb_logo[26] = {
 "          _                           _  ",

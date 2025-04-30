@@ -110,7 +110,7 @@ double run(int use_whfast512){
 
 
     gettimeofday(&time_beginning,NULL);
-    double tmax = 2.*M_PI*1e6; // 1 Myr
+    double tmax = 2.*M_PI*1e5; // 100 kyr
     int err = reb_simulation_integrate(r,  tmax);
     if (err>0){
         printf("An error occured during the integration.\n");
@@ -125,9 +125,9 @@ double run(int use_whfast512){
 }
 
 int main(int argc, char* argv[]) {
-    printf("Integrating for 1 Myr with WHFast512:\n");
+    printf("Integrating for 100 kyr with WHFast512:\n");
     double w1= run(1);
-    printf("Integrating for 1 Myr with WHFast:\n");
+    printf("Integrating for 100 kyr with WHFast:\n");
     double w0= run(0);
     printf("\nSpeedup: %.2fx\n", w0/w1);
     return EXIT_SUCCESS;

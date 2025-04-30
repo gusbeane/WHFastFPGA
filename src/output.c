@@ -34,10 +34,6 @@
 #include "integrator_sei.h"
 
 #include "input.h"
-#ifdef MPI
-#include "communication_mpi.h"
-#include "mpi.h"
-#endif // MPI
 
 
 // List of REBOUND parameters to be written to a file.
@@ -326,13 +322,7 @@ int reb_simulation_output_screenshot(struct reb_simulation* r, const char* filen
 
 void reb_simulation_output_timing(struct reb_simulation* r, const double tmax){
     const int N = r->N;
-#ifdef MPI
-    int N_tot = 0;
-    MPI_Reduce(&N, &N_tot, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD); 
-    if (r->mpi_id!=0) return;
-#else
     int N_tot = N;
-#endif
     struct reb_timeval tim;
     gettimeofday(&tim, NULL);
     double temp = tim.tv_sec+(tim.tv_usec/1000000.0);
@@ -412,13 +402,7 @@ void reb_simulation_output_timing(struct reb_simulation* r, const double tmax){
 
 void reb_simulation_output_ascii(struct reb_simulation* r, char* filename){
     const int N = r->N;
-#ifdef MPI
-    char filename_mpi[1024];
-    sprintf(filename_mpi,"%s_%d",filename,r->mpi_id);
-    FILE* of = fopen(filename_mpi,"ab"); 
-#else // MPI
     FILE* of = fopen(filename,"ab"); 
-#endif // MPI
     if (of==NULL){
         reb_simulation_error(r, "Can not open file.");
         return;
@@ -432,13 +416,7 @@ void reb_simulation_output_ascii(struct reb_simulation* r, char* filename){
 
 void reb_simulation_output_orbits(struct reb_simulation* r, char* filename){
     const int N = r->N;
-#ifdef MPI
-    char filename_mpi[1024];
-    sprintf(filename_mpi,"%s_%d",filename,r->mpi_id);
-    FILE* of = fopen(filename_mpi,"ab"); 
-#else // MPI
     FILE* of = fopen(filename,"ab"); 
-#endif // MPI
     if (of==NULL){
         reb_simulation_error(r, "Can not open file.");
         return;
@@ -634,19 +612,9 @@ void reb_simulation_output_velocity_dispersion(struct reb_simulation* r, char* f
         }
         Q.z = Q.z + (p.vz-Aim1.z)*(p.vz-A.z);
     }
-#ifdef MPI
-    int N_tot = 0;
-    struct reb_vec3d A_tot = {.x=0, .y=0, .z=0};
-    struct reb_vec3d Q_tot = {.x=0, .y=0, .z=0};
-    MPI_Reduce(&N, &N_tot, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD); 
-    MPI_Reduce(&A, &A_tot, 3, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD); 
-    MPI_Reduce(&Q, &Q_tot, 3, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD); 
-    if (r->mpi_id!=0) return;
-#else
     int N_tot = N;
     struct reb_vec3d A_tot = A;
     struct reb_vec3d Q_tot = Q;
-#endif
     Q_tot.x = sqrt(Q_tot.x/(double)N_tot);
     Q_tot.y = sqrt(Q_tot.y/(double)N_tot);
     Q_tot.z = sqrt(Q_tot.z/(double)N_tot);

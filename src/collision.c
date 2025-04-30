@@ -37,9 +37,6 @@
 #include "boundary.h"
 #include "tree.h"
 #include "integrator_trace.h"
-#ifdef MPI
-#include "communication_mpi.h"
-#endif // MPI
 #define MIN(a, b) ((a) > (b) ? (b) : (a))    ///< Returns the minimum of a and b
 #define MAX(a, b) ((a) > (b) ? (a) : (b))    ///< Returns the maximum of a and b
 
@@ -239,16 +236,6 @@ void reb_collision_search(struct reb_simulation* const r){
             // Prepare particles for distribution to other nodes. 
             reb_simulation_update_tree(r);          
 
-#ifdef MPI
-            // Distribute particles and add newly received particles to tree.
-            reb_communication_mpi_distribute_particles(r);
-            
-            // Prepare essential tree (and particles close to the boundary needed for collisions) for distribution to other nodes.
-            reb_tree_prepare_essential_tree_for_collisions(r);
-
-            // Transfer essential tree and particles needed for collisions.
-            reb_communication_mpi_distribute_essential_tree_for_collisions(r);
-#endif // MPI
 
             // Loop over ghost boxes, but only the inner most ring.
             int N_ghost_xcol = (r->N_ghost_x>1?1:r->N_ghost_x);
@@ -505,11 +492,6 @@ static void reb_tree_get_nearest_neighbour_in_cell(struct reb_simulation* const 
     if (c->pt>=0){     
         // c is a leaf node
         int condition     = 1;
-#ifdef MPI
-        int isloc    = 1 ;
-        isloc = reb_communication_mpi_rootbox_is_local(r, ri);
-        if (isloc==1){
-#endif // MPI
             /**
              * If this is a local cell, make sure particle is not colliding with itself.
              * If this is a remote cell, the particle number might be the same, even for 
@@ -517,22 +499,9 @@ static void reb_tree_get_nearest_neighbour_in_cell(struct reb_simulation* const 
              * TODO: This can probably be written in a cleaner way.
              */
             condition = (c->pt != collision_nearest->p1);
-#ifdef MPI
-        }
-#endif // MPI
         if (condition){
             struct reb_particle p2;
-#ifdef MPI
-            if (isloc==1){
-#endif // MPI
                 p2 = particles[c->pt];
-#ifdef MPI
-            }else{
-                int N_root_per_node = r->N_root/r->mpi_num;
-                int proc_id = ri/N_root_per_node;
-                p2 = r->particles_recv[proc_id][c->pt];
-            }
-#endif // MPI
 
             double dx = gb.x - p2.x;
             double dy = gb.y - p2.y;
@@ -656,18 +625,7 @@ int reb_collision_resolve_hardsphere(struct reb_simulation* const r, struct reb_
     struct reb_particle* const particles = r->particles;
     struct reb_particle p1 = particles[c.p1];
     struct reb_particle p2;
-#ifdef MPI
-    int isloc = reb_communication_mpi_rootbox_is_local(r, c.ri);
-    if (isloc==1){
-#endif // MPI
         p2 = particles[c.p2];
-#ifdef MPI
-    }else{
-        int N_root_per_node = r->N_root/r->mpi_num;
-        int proc_id = c.ri/N_root_per_node;
-        p2 = r->particles_recv[proc_id][c.p2];
-    }
-#endif // MPI
 //    if (p1.last_collision==t || p2.last_collision==t) return;
     struct reb_vec6d gb = c.gb;
     double x21  = p1.x + gb.x  - p2.x; 
@@ -720,17 +678,11 @@ int reb_collision_resolve_hardsphere(struct reb_simulation* const r, struct reb_
 
 
     // Applying the changes to the particles.
-#ifdef MPI
-    if (isloc==1){
-#endif // MPI
     const double p2pf = p1.m/(p1.m+p2.m);
     particles[c.p2].vx -=    p2pf*dvx2n;
     particles[c.p2].vy -=    p2pf*dvy2nn;
     particles[c.p2].vz -=    p2pf*dvz2nn;
     particles[c.p2].last_collision = r->t;
-#ifdef MPI
-    }
-#endif // MPI
     const double p1pf = p2.m/(p1.m+p2.m);
     particles[c.p1].vx +=    p1pf*dvx2n; 
     particles[c.p1].vy +=    p1pf*dvy2nn; 

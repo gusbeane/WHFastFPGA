@@ -32,9 +32,6 @@
 #include "tree.h"
 #include "simulationarchive.h"
 
-#ifdef MPI
-#include "communication_mpi.h"
-#endif
 
 // Macro to read a single field from a binary file.
 #define CASE(typename, value) case REB_BINARY_FIELD_TYPE_##typename: \

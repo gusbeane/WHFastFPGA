@@ -39,9 +39,6 @@
 #include "integrator_trace.h"
 #define MAX(a, b) ((a) > (b) ? (a) : (b))    ///< Returns the maximum of a and b
 
-#ifdef MPI
-#include "communication_mpi.h"
-#endif
 
 /**
   * @brief The function loops over all trees to call calculate_forces_for_particle_from_cell() tree to calculate forces for each particle.

@@ -37,9 +37,6 @@
 #ifndef COLLISIONS_NONE
 #include "collision.h"
 #endif // COLLISIONS_NONE
-#ifdef MPI
-#include "communication_mpi.h"
-#endif // MPI
 
 #ifdef GRAVITY_GRAPE
 #warning Fix this. 
@@ -156,17 +153,6 @@ void reb_simulation_add(struct reb_simulation* const r, struct reb_particle pt){
 		gravity_minimum_mass = pt.m;
 	}
 #endif // GRAVITY_GRAPE
-#ifdef MPI
-	int rootbox = reb_get_rootbox_for_particle(r, pt);
-	int N_root_per_node = r->N_root/r->mpi_num;
-	int proc_id = rootbox/N_root_per_node;
-    const unsigned int N_active = (r->N_active==-1)?r->N: (unsigned int)r->N_active;
-	if (proc_id != r->mpi_id && r->N >= N_active){
-		// Add particle to array and send them to proc_id later. 
-		reb_communication_mpi_add_particle_to_send_queue(r,pt,proc_id);
-		return;
-	}
-#endif // MPI
 	// Add particle to local partical array.
 	reb_simulation_add_local(r, pt);
 }
@@ -293,35 +279,12 @@ struct reb_particle* reb_simulation_particle_by_hash(struct reb_simulation* cons
 }
 
 struct reb_particle reb_simulation_particle_by_hash_mpi(struct reb_simulation* const r, uint32_t hash){
-#ifdef MPI
-    struct reb_particle* p = reb_simulation_particle_by_hash(r, hash);
-    int found = p==0?0:1;
-    int found_sum = 0;
-    MPI_Allreduce(&found, &found_sum, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-    if (found_sum == 0){
-        return reb_particle_nan();
-    }
-    if (found_sum > 1){
-        reb_simulation_error(r, "Multiple particles with same hash found.");
-    }
-    int root;
-    int mayberoot = found ? r->mpi_id : 0;
-    MPI_Allreduce(&mayberoot, &root, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
-    struct reb_particle ph = {0};
-    if (found){
-        ph = *p;
-        ph.sim = NULL;
-    }
-    MPI_Bcast(&ph, sizeof(struct reb_particle), MPI_CHAR, root, MPI_COMM_WORLD);
-    return ph;
-#else // MPI
     struct reb_particle* p = reb_simulation_particle_by_hash(r, hash);
     if (p==0){
         return reb_particle_nan();
     }else{
        return *p;
     }
-#endif // MPI
 }
 
 void reb_simulation_remove_all_particles(struct reb_simulation* const r){

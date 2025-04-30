@@ -34,9 +34,6 @@
 #include "tools.h"
 #include "tree.h"
 #include "boundary.h"
-#ifdef MPI
-#include "communication_mpi.h"
-#endif // MPI
 #define MAX(a, b) ((a) > (b) ? (a) : (b))    ///< Returns the maximum of a and b
 
 
@@ -325,9 +322,6 @@ void reb_simulation_move_to_com(struct reb_simulation* const r){
     if (r->gravity==REB_GRAVITY_TREE || r->collision==REB_COLLISION_TREE || r->collision==REB_COLLISION_LINETREE){
         reb_simulation_update_tree(r);          
     }
-#ifdef MPI
-    reb_communication_mpi_distribute_particles(r);
-#endif // MPI
 }
 
 void reb_simulation_get_serialized_particle_data(struct reb_simulation* r, uint32_t* hash, double* m, double* radius, double (*xyz)[3], double (*vxvyvz)[3], double (*xyzvxvyvz)[6]){
@@ -433,49 +427,8 @@ struct reb_particle reb_simulation_com_range(struct reb_simulation* r, int first
 }
 
 struct reb_particle reb_simulation_com(struct reb_simulation* r){
-#ifdef MPI
-    reb_communication_mpi_distribute_particles(r);
-    int N_real = r->N-r->N_var;
-    struct reb_particle com_local = reb_simulation_com_range(r, 0, N_real);
-	struct reb_particle com = {0};
-    com_local.x  *= com_local.m;
-    com_local.y  *= com_local.m;
-    com_local.z  *= com_local.m;
-    com_local.vx *= com_local.m;
-    com_local.vy *= com_local.m;
-    com_local.vz *= com_local.m;
-    com_local.ax *= com_local.m;
-    com_local.ay *= com_local.m;
-    com_local.az *= com_local.m;
-
-    MPI_Allreduce(&com_local.x, &com.x, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(&com_local.x, &com.y, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(&com_local.x, &com.z, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(&com_local.vx, &com.vx, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(&com_local.vx, &com.vy, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(&com_local.vx, &com.vz, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(&com_local.ax, &com.ax, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(&com_local.ax, &com.ay, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(&com_local.ax, &com.az, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(&com_local.m, &com.m, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    
-    if (com.m > 0){
-        com.x  /= com.m;
-        com.y  /= com.m;
-        com.z  /= com.m;
-        com.vx /= com.m;
-        com.vy /= com.m;
-        com.vz /= com.m;
-        com.ax /= com.m;
-        com.ay /= com.m;
-        com.az /= com.m;
-    }
-
-	return com; 
-#else // MPI
     int N_real = r->N-r->N_var;
     return reb_simulation_com_range(r, 0, N_real);
-#endif // MPI
 }
 
 struct reb_particle reb_simulation_jacobi_com(struct reb_particle* p){
@@ -823,12 +776,7 @@ static struct reb_particle reb_particle_from_fmt_errV(struct reb_simulation* r, 
         return reb_particle_nan();
     }
     if (!primary_given){
-#ifdef MPI
-        reb_simulation_error(r, "When using MPI, you need to provide a primary to reb_simulation_add_fmt() when using orbital elements.");
-        return reb_particle_nan();
-#else // MPI
         primary = reb_simulation_com(r);
-#endif // MPI
     }
     // Note: jacobi_masses not yet implemented.
 

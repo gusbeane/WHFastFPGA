@@ -580,9 +580,6 @@ void reb_simulation_init(struct reb_simulation* r){
     r->ri_eos.is_synchronized = 1;
     
     
-    // ********** BS
-    reb_integrator_bs_reset(r);
-
     // Tree parameters. Will not be used unless gravity or collision search makes use of tree.
     r->tree_needs_update= 0;
     r->tree_root        = NULL;

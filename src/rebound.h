@@ -74,9 +74,6 @@ int rand_r (unsigned int *seed);
 #include <immintrin.h>
 #endif
 
-#ifdef MPI
-#include "mpi.h"
-#endif
 
 #ifndef GITHASH
 #define GITHASH notavailable0000000000000000000000000001 
@@ -545,17 +542,6 @@ struct reb_simulation {
     int     N_ghost_z;
 
     // MPI Parallelization
-#ifdef MPI
-    int    mpi_id;                              // Unique id of this node (starting at 0). Used for MPI only.
-    int    mpi_num;                             // Number of MPI nodes. Used for MPI only.
-    struct reb_particle** particles_send;       // Send buffer for particles. There is one buffer per node. 
-    int*   N_particles_send;                    // Current length of particle send buffer. 
-    int*   N_particles_send_max;                // Maximal length of particle send beffer before realloc() is needed. 
-    struct reb_particle** particles_recv;       // Receive buffer for particles. There is one buffer per node. 
-    int*   N_particles_recv;                    // Current length of particle receive buffer. 
-    int*   N_particles_recv_max;                // Maximal length of particle receive beffer before realloc() is needed. */
-
-#endif // MPI
 
     int collision_resolve_keep_sorted;      // 0 (default): may reorder particles during collisions, 1: keep particles sorted.
     struct reb_collision* collisions;       // Array of current collisions. Do not change manually
@@ -1111,10 +1097,6 @@ DLLEXPORT void reb_simulation_irotate(struct reb_simulation* const sim, const st
 
 DLLEXPORT void reb_rotation_to_orbital(struct reb_rotation q, double* Omega, double* inc, double* omega);
 
-#ifdef MPI
-void reb_mpi_init(struct reb_simulation* const r);
-void reb_mpi_finalize(struct reb_simulation* const r);
-#endif // MPI
 
 #ifdef OPENMP
 // Wrapper method to set number of OpenMP threads from python.

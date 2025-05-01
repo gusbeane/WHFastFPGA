@@ -80,33 +80,6 @@ void reb_communication_mpi_add_particle_to_send_queue(struct reb_simulation* con
  */ 
 int  reb_communication_mpi_rootbox_is_local(struct reb_simulation* const r, int i);
 
-/**
- * Send cells in buffer tree_essential_send to corresponding node. 
- * Receives cells from all nodes in buffer tree_essential_recv and adds them
- * to the non-local root boxes.
- */
-void reb_communication_mpi_distribute_essential_tree_for_gravity(struct reb_simulation* const r);
-
-/**
- * Prepares the essential tree of a root box for communication with other nodes.
- * @param root The root cell under investigation.
- */
-void reb_communication_mpi_prepare_essential_tree_for_gravity(struct reb_simulation* const r, struct reb_treecell* root);
-
-/**
- * Send cells/particles in buffer tree_essential_send/particles_send to corresponding node. 
- * Receives cells/particles from all nodes in buffers. Does not insert particles 
- * into local tree.
- */
-void reb_communication_mpi_distribute_essential_tree_for_collisions(struct reb_simulation* const r);
-
-/**
- * Prepares the essential tree/particles of a root box for communication with other nodes.
- * Adds copy of particles into particles_send.  
- * @param root The root cell under investigation.
- */
-void reb_communication_mpi_prepare_essential_tree_for_collisions(struct reb_simulation* const r, struct reb_treecell* root);
-
 
 #endif // MPI
 #endif // _COMMUNICATION_MPI_H

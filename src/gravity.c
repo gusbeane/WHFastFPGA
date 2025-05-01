@@ -33,20 +33,10 @@
 #include <stdlib.h>
 #include "particle.h"
 #include "rebound.h"
-#include "tree.h"
 #include "boundary.h"
 #include "integrator_mercurius.h"
 #include "integrator_trace.h"
 #define MAX(a, b) ((a) > (b) ? (a) : (b))    ///< Returns the maximum of a and b
-
-
-/**
-  * @brief The function loops over all trees to call calculate_forces_for_particle_from_cell() tree to calculate forces for each particle.
-  * @param r REBOUND simulation to consider
-  * @param pt Index of the particle the force is calculated for.
-  * @param gb Ghostbox plus position of the particle (precalculated). 
-  */
-static void reb_calculate_acceleration_for_particle(const struct reb_simulation* const r, const int pt, const struct reb_vec6d gb);
 
 
 /**
@@ -327,34 +317,6 @@ void reb_calculate_acceleration(struct reb_simulation* r){
                     particles[j].az = tz;
                     }
                 }
-            }
-            }
-        }
-        break;
-        case REB_GRAVITY_TREE:
-        {
-#pragma omp parallel for schedule(guided)
-            for (int i=0; i<N; i++){
-                particles[i].ax = 0; 
-                particles[i].ay = 0; 
-                particles[i].az = 0; 
-            }
-            // Summing over all Ghost Boxes
-            for (int gbx=-r->N_ghost_x; gbx<=r->N_ghost_x; gbx++){
-            for (int gby=-r->N_ghost_y; gby<=r->N_ghost_y; gby++){
-            for (int gbz=-r->N_ghost_z; gbz<=r->N_ghost_z; gbz++){
-                // Summing over all particle pairs
-#pragma omp parallel for schedule(guided)
-                for (int i=0; i<N; i++){
-                    if (reb_sigint > 1) return;
-                    struct reb_vec6d gb = reb_boundary_get_ghostbox(r, gbx,gby,gbz);
-                    // Precalculated shifted position
-                    gb.x += particles[i].x;
-                    gb.y += particles[i].y;
-                    gb.z += particles[i].z;
-                    reb_calculate_acceleration_for_particle(r, i, gb);
-                }
-            }
             }
             }
         }
@@ -1058,72 +1020,3 @@ void reb_calculate_and_apply_jerk(struct reb_simulation* r, const double v){
         break;
     }
 }
-
-// Helper routines for REB_GRAVITY_TREE
-
-
-/**
-  * @brief The function calls itself recursively using cell breaking criterion to check whether it can use center of mass (and mass quadrupole tensor) to calculate forces.
-  * Calculate the acceleration for a particle from a given cell and all its daughter cells.
-  *
-  * @param r REBOUND simulation to consider
-  * @param pt Index of the particle the force is calculated for.
-  * @param node Pointer to the cell the force is calculated from.
-  * @param gb Ghostbox plus position of the particle (precalculated). 
-  */
-static void reb_calculate_acceleration_for_particle_from_cell(const struct reb_simulation* const r, const int pt, const struct reb_treecell *node, const struct reb_vec6d gb);
-
-static void reb_calculate_acceleration_for_particle(const struct reb_simulation* const r, const int pt, const struct reb_vec6d gb) {
-    for(int i=0;i<r->N_root;i++){
-        struct reb_treecell* node = r->tree_root[i];
-        if (node!=NULL){
-            reb_calculate_acceleration_for_particle_from_cell(r, pt, node, gb);
-        }
-    }
-}
-
-static void reb_calculate_acceleration_for_particle_from_cell(const struct reb_simulation* r, const int pt, const struct reb_treecell *node, const struct reb_vec6d gb) {
-    const double G = r->G;
-    const double softening2 = r->softening*r->softening;
-    struct reb_particle* const particles = r->particles;
-    const double dx = gb.x - node->mx;
-    const double dy = gb.y - node->my;
-    const double dz = gb.z - node->mz;
-    const double r2 = dx*dx + dy*dy + dz*dz;
-    if ( node->pt < 0 ) { // Not a leaf
-        if ( node->w*node->w > r->opening_angle2*r2 ){
-            for (int o=0; o<8; o++) {
-                if (node->oct[o] != NULL) {
-                    reb_calculate_acceleration_for_particle_from_cell(r, pt, node->oct[o], gb);
-                }
-            }
-        } else {
-            double _r = sqrt(r2 + softening2);
-            double prefact = -G/(_r*_r*_r)*node->m;
-#ifdef QUADRUPOLE
-            double qprefact = G/(_r*_r*_r*_r*_r);
-            particles[pt].ax += qprefact*(dx*node->mxx + dy*node->mxy + dz*node->mxz); 
-            particles[pt].ay += qprefact*(dx*node->mxy + dy*node->myy + dz*node->myz); 
-            particles[pt].az += qprefact*(dx*node->mxz + dy*node->myz + dz*node->mzz); 
-            double mrr     = dx*dx*node->mxx     + dy*dy*node->myy     + dz*dz*node->mzz
-                    + 2.*dx*dy*node->mxy     + 2.*dx*dz*node->mxz     + 2.*dy*dz*node->myz; 
-            qprefact *= -5.0/(2.0*_r*_r)*mrr;
-            particles[pt].ax += (qprefact + prefact) * dx; 
-            particles[pt].ay += (qprefact + prefact) * dy; 
-            particles[pt].az += (qprefact + prefact) * dz; 
-#else
-            particles[pt].ax += prefact*dx; 
-            particles[pt].ay += prefact*dy; 
-            particles[pt].az += prefact*dz; 
-#endif
-        }
-    } else { // It's a leaf node
-        if (node->remote == 0 && node->pt == pt) return;
-        double _r = sqrt(r2 + softening2);
-        double prefact = -G/(_r*_r*_r)*node->m;
-        particles[pt].ax += prefact*dx; 
-        particles[pt].ay += prefact*dy; 
-        particles[pt].az += prefact*dz; 
-    }
-}
-

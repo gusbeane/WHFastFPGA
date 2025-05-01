@@ -27,7 +27,6 @@
 #include <stdint.h>
 #include <string.h>
 #include "rebound.h"
-#include "tree.h"
 #include "boundary.h"
 #include "particle.h"
 #include "integrator_ias15.h"
@@ -58,17 +57,6 @@ static void reb_simulation_add_local(struct reb_simulation* const r, struct reb_
 
 	r->particles[r->N] = pt;
 	r->particles[r->N].sim = r;
-	if (r->gravity==REB_GRAVITY_TREE || r->collision==REB_COLLISION_TREE || r->collision==REB_COLLISION_LINETREE){
-        if (r->root_size==-1){
-            reb_simulation_error(r,"root_size is -1. Make sure you call reb_simulation_configure_box() before using a tree based gravity or collision solver.");
-            return;
-        }
-        if(fabs(pt.x)>r->boxsize.x/2. || fabs(pt.y)>r->boxsize.y/2. || fabs(pt.z)>r->boxsize.z/2.){
-            reb_simulation_error(r,"Cannot add particle outside of simulation box.");
-            return;
-        }
-		reb_tree_add_particle_to_tree(r, r->N);
-	}
 	(r->N)++;
     if (r->integrator == REB_INTEGRATOR_MERCURIUS){
         struct reb_integrator_mercurius* rim = &(r->ri_mercurius);
@@ -392,24 +380,12 @@ int reb_simulation_remove_particle(struct reb_simulation* const r, int index, in
 		for(unsigned int j=index; j<r->N; j++){
 			r->particles[j] = r->particles[j+1];
 		}
-        if (r->tree_root){
-		    reb_simulation_error(r, "REBOUND cannot remove a particle a tree and keep the particles sorted. Did not remove particle.");
-		    return 0;
-        }
 	}else{
-        if (r->tree_root){
-            // Just flag particle, will be removed in update_tree.
-            r->particles[index].y = nan("");
-            if(r->free_particle_ap){
-                r->free_particle_ap(&r->particles[index]);
-            }
-        }else{
-	        r->N--;
-            if(r->free_particle_ap){
-                r->free_particle_ap(&r->particles[index]);
-            }
-		    r->particles[index] = r->particles[r->N];
+	    r->N--;
+        if(r->free_particle_ap){
+            r->free_particle_ap(&r->particles[index]);
         }
+		r->particles[index] = r->particles[r->N];
 	}
 
 	return 1;
@@ -478,7 +454,6 @@ struct reb_particle reb_particle_nan(void){
     p.m = nan("");
     p.r = nan("");
     p.last_collision = nan("");
-    p.c = NULL;
     p.hash = 0;
     p.ap = NULL;
     p.sim = NULL;

@@ -29,7 +29,6 @@
 #include "rebound.h"
 #include "collision.h"
 #include "input.h"
-#include "tree.h"
 #include "simulationarchive.h"
 
 
@@ -215,22 +214,9 @@ finish_fields:
     }
     r->N_allocated = r->N; // This used to be different. Now only saving N.
     for (unsigned int l=0;l<r->N_allocated;l++){
-        r->particles[l].c = NULL;
         r->particles[l].ap = NULL;
         r->particles[l].sim = r;
     }
-    reb_tree_delete(r);
-    if (r->gravity==REB_GRAVITY_TREE || r->collision==REB_COLLISION_TREE || r->collision==REB_COLLISION_LINETREE){
-        for (unsigned int l=0;l<r->N_allocated;l++){
-            reb_tree_add_particle_to_tree(r, l);
-        }
-    }
-    // Commented out on Nov 26 2024. Not sure why this was added. Might be for an older SA version.
-    // if (r->ri_ias15.at){ 
-    //     // Assume that all arrays were saved whenever ri_ias15.at was saved.
-    //     // Only 3*N entries got saved. 
-    //     r->ri_ias15.N_allocated = 3*r->N;
-    // }
     r->ri_whfast512.recalculate_constants = 1;
 }
 

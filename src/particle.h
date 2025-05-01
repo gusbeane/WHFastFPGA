@@ -26,7 +26,6 @@
 #define _PARTICLE_H
 struct reb_simulation;
 struct reb_particle;
-struct reb_treecell;
 
 /**
  * @brief Returns the index of the rootbox for the current particles based on its position.

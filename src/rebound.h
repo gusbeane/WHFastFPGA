@@ -104,7 +104,6 @@ struct reb_simulation;
 struct reb_simulationarchive;
 struct reb_display_data;
 struct reb_server_data;
-struct reb_treecell;
 struct reb_variational_configuration;
 struct reb_display_settings;
 
@@ -122,7 +121,6 @@ struct reb_particle {
     double m;                   // mass
     double r;                   // physical radius
     double last_collision;      // Last time the particle had a physical collision.
-    struct reb_treecell* c;     // Pointer to the cell the particle is currently in.
 #if !defined(_LP64)
     char pad1[4];   // c is short by 4 bytes
 #endif
@@ -509,9 +507,6 @@ struct reb_simulation {
     struct reb_particle* particles; // Main particle array with active, variational, and test particles.
     struct reb_vec3d* gravity_cs; 
     int     N_allocated_gravity_cs;
-    struct reb_treecell** tree_root;
-    int     tree_needs_update;      // Flag to force a tree update (after boundary check)
-    double opening_angle2;          // Opening angle for tree-based gravity calculation. Defaukt 0.25. 
     enum REB_STATUS status;         // Current simulation status
     int     exact_finish_time;      // 1 (default): integrate exactly to the time requested and adjust timestep if needed, 0: may overshoot by one timestep
 
@@ -560,12 +555,6 @@ struct reb_simulation {
     int*   N_particles_recv;                    // Current length of particle receive buffer. 
     int*   N_particles_recv_max;                // Maximal length of particle receive beffer before realloc() is needed. */
 
-    struct reb_treecell** tree_essential_send;  // Send buffer for cells. There is one buffer per node. 
-    int*   N_tree_essential_send;               // Current length of cell send buffer. 
-    int*   N_tree_essential_send_max;           // Maximal length of cell send beffer before realloc() is needed. 
-    struct reb_treecell** tree_essential_recv;  // Receive buffer for cells. There is one buffer per node. 
-    int*   N_tree_essential_recv;               // Current length of cell receive buffer. 
-    int*   N_tree_essential_recv_max;           // Maximal length of cell receive beffer before realloc() is needed. 
 #endif // MPI
 
     int collision_resolve_keep_sorted;      // 0 (default): may reorder particles during collisions, 1: keep particles sorted.
@@ -1347,7 +1336,6 @@ struct reb_binary_field { // This structure is used to save and load binary file
 
 DLLEXPORT void reb_simulation_init(struct reb_simulation* r); // Used internally and by python. Should not be called by the user.
 DLLEXPORT void reb_simulation_update_acceleration(struct reb_simulation* r); // Used by REBOUNDx
-DLLEXPORT void reb_simulation_update_tree(struct reb_simulation* const r);
 DLLEXPORT int reb_simulation_get_next_message(struct reb_simulation* const r, char* const buf); // Get the next stored warning message. Used only if save_messages==1. Return value is 0 if no messages are present, 1 otherwise.
 DLLEXPORT int reb_check_fp_contract(); // Returns 1 if floating point contraction are enabled. 0 otherwise.
 DLLEXPORT size_t reb_simulation_struct_size();

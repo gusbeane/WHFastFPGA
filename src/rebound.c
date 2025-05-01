@@ -42,7 +42,6 @@
 #include "boundary.h"
 #include "gravity.h"
 #include "collision.h"
-#include "tree.h"
 #include "output.h"
 #include "tools.h"
 #include "particle.h"
@@ -83,27 +82,7 @@ void reb_simulation_step(struct reb_simulation* const r){
     reb_integrator_part1(r);
     PROFILING_STOP(PROFILING_CAT_INTEGRATOR)
 
-    // Update and simplify tree. 
-    // Prepare particles for distribution to other nodes. 
-    // This function also creates the tree if called for the first time.
-    if (r->tree_needs_update || r->gravity==REB_GRAVITY_TREE || r->collision==REB_COLLISION_TREE || r->collision==REB_COLLISION_LINETREE){
-        // Check for root crossings.
-        PROFILING_START()
-        reb_boundary_check(r);     
-        PROFILING_STOP(PROFILING_CAT_BOUNDARY)
-
-        // Update tree (this will remove particles which left the box)
-        PROFILING_START()
-        reb_simulation_update_tree(r);          
-        PROFILING_STOP(PROFILING_CAT_GRAVITY)
-    }
-
     PROFILING_START()
-
-    if (r->tree_root!=NULL && r->gravity==REB_GRAVITY_TREE){
-        // Update center of mass and quadrupole moments in tree in preparation of force calculation.
-        reb_simulation_update_tree_gravity_data(r); 
-    }
 
     // Calculate accelerations. 
     reb_calculate_acceleration(r);
@@ -134,10 +113,6 @@ void reb_simulation_step(struct reb_simulation* const r){
     // Check for root crossings.
     PROFILING_START()
     reb_boundary_check(r);     
-    if (r->tree_needs_update){
-        // Update tree (this will remove particles which left the box)
-        reb_simulation_update_tree(r);          
-    }
     PROFILING_STOP(PROFILING_CAT_BOUNDARY)
 
     // Search for collisions using local and essential tree.
@@ -307,7 +282,6 @@ void reb_simulation_free_pointers(struct reb_simulation* const r){
 #ifdef SERVER
     reb_simulation_stop_server(r);
 #endif // SERVER
-    reb_tree_delete(r);
     if (r->gravity_cs){
         free(r->gravity_cs  );
     }
@@ -578,12 +552,6 @@ void reb_simulation_init(struct reb_simulation* r){
     r->ri_eos.phi1 = REB_EOS_LF;
     r->ri_eos.safe_mode = 1;
     r->ri_eos.is_synchronized = 1;
-    
-    
-    // Tree parameters. Will not be used unless gravity or collision search makes use of tree.
-    r->tree_needs_update= 0;
-    r->tree_root        = NULL;
-    r->opening_angle2   = 0.25;
 
 }
 

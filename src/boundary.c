@@ -32,7 +32,6 @@
 #include "integrator.h"
 #include "rebound.h"
 #include "boundary.h"
-#include "tree.h"
 
 void reb_boundary_check(struct reb_simulation* const r){
 	struct reb_particle* const particles = r->particles;
@@ -67,13 +66,6 @@ void reb_boundary_check(struct reb_simulation* const r){
                         r->energy_offset += Ei - reb_simulation_energy(r);
                     } else {
                     reb_simulation_remove_particle(r, i,0); // keep_sorted=0 by default in C version
-                    }
-                    if (r->tree_root==NULL){
-                        i--; // need to recheck the particle that replaced the removed one
-                        N--; // This is the local N
-                    }else{
-                        // particle just marked, will be removed later
-                        r->tree_needs_update= 1;
                     }
 				}
 			}

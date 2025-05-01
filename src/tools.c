@@ -32,7 +32,6 @@
 #include "particle.h"
 #include "rebound.h"
 #include "tools.h"
-#include "tree.h"
 #include "boundary.h"
 #define MAX(a, b) ((a) > (b) ? (a) : (b))    ///< Returns the maximum of a and b
 
@@ -317,11 +316,8 @@ void reb_simulation_move_to_com(struct reb_simulation* const r){
 		particles[i].vz -= com.vz;
 	}
     
-    // Check boundaries and update tree if needed
+    // Check boundaries
     reb_boundary_check(r);     
-    if (r->gravity==REB_GRAVITY_TREE || r->collision==REB_COLLISION_TREE || r->collision==REB_COLLISION_LINETREE){
-        reb_simulation_update_tree(r);          
-    }
 }
 
 void reb_simulation_get_serialized_particle_data(struct reb_simulation* r, uint32_t* hash, double* m, double* radius, double (*xyz)[3], double (*vxvyvz)[3], double (*xyzvxvyvz)[6]){

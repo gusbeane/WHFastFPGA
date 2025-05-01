@@ -249,35 +249,6 @@ void reb_simulation_free_pointers(struct reb_simulation* const r){
     if(r->display_settings){
         free(r->display_settings);
     }
-#ifdef OPENGL
-    if(r->display_data){
-        // Waiting for visualization to shut down.
-        if (r->display_data->window){ // Not needed under normal circumstances
-            usleep(100);
-        }
-        if (r->display_data->window){ // still running?
-            printf("Waiting for OpenGL visualization to shut down...\n");
-            while(r->display_data->window){
-                usleep(100);
-            }
-        }
-        pthread_mutex_destroy(&(r->display_data->mutex));
-        if (r->display_data->r_copy){
-            reb_simulation_free(r->display_data->r_copy);
-            r->display_data->r_copy = NULL;
-        }
-        if (r->display_data->particle_data){
-            free(r->display_data->particle_data);
-            r->display_data->particle_data = NULL;
-        }
-        if (r->display_data->orbit_data){
-            free(r->display_data->orbit_data);
-            r->display_data->orbit_data = NULL;
-        }
-        free(r->display_data);
-        r->display_data = NULL;
-    }
-#endif //OPENGL
     if (r->gravity_cs){
         free(r->gravity_cs  );
     }
@@ -717,27 +688,12 @@ static void* reb_simulation_integrate_raw(void* args){
         }
 
 #endif 
-#ifdef OPENGL
-        if (r->display_data){
-            // Note: Mutex is not FIFO.
-            // Allow time for mutex to lock in display.c before it is relocked here.
-            while (r->display_data->need_copy == 1){
-                usleep(10);
-            }
-            pthread_mutex_lock(&(r->display_data->mutex)); 
-        }
-#endif //OPENGL
         if (r->simulationarchive_filename){ reb_simulationarchive_heartbeat(r);}
         reb_simulation_step(r); 
         reb_run_heartbeat(r);
         if (reb_sigint){
             r->status = REB_STATUS_SIGINT;
         }
-#ifdef OPENGL
-        if (r->display_data){
-            pthread_mutex_unlock(&(r->display_data->mutex));
-        }
-#endif //OPENGL
         if (r->usleep > 0){
             usleep(r->usleep);
         }
@@ -758,36 +714,7 @@ enum REB_STATUS reb_simulation_integrate(struct reb_simulation* const r, double 
         .tmax = tmax, 
     };
 
-#ifdef OPENGL
-#ifdef __EMSCRIPTEN__
-    if (r->display_data==NULL){
-        r->display_data = calloc(sizeof(struct reb_display_data),1);
-        r->display_data->r = r;
-        // Setup windows, compile shaders, etc.
-        reb_display_init(r); // Will return. Display routines running in animation_loop.
-    }
     reb_simulation_integrate_raw(&thread_info);
-#else // __EMSCRIPTEN__
-    if (r->display_data==NULL){
-        r->display_data = calloc(sizeof(struct reb_display_data),1);
-        r->display_data->r = r;
-        if (pthread_mutex_init(&(r->display_data->mutex), NULL)){
-            reb_simulation_error(r,"Mutex creation failed.");
-        }
-    }
-
-    if (pthread_create(&r->display_data->compute_thread,NULL,reb_simulation_integrate_raw,&thread_info)){
-        reb_simulation_error(r, "Error creating compute thread.");
-    }
-
-    reb_display_init(r); // Display routines need to run on main thread. Will not return until r->status<0.
-    if (pthread_join(r->display_data->compute_thread,NULL)){
-        reb_simulation_error(r, "Error joining compute thread.");
-    }
-#endif // __EMSCRIPTEN__
-#else // OPENGL
-    reb_simulation_integrate_raw(&thread_info);
-#endif // OPENGL
     return r->status;
 }
 

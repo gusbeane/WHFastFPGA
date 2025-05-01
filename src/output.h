@@ -38,9 +38,6 @@ enum profiling_categories {
 	PROFILING_CAT_BOUNDARY,
 	PROFILING_CAT_GRAVITY,
 	PROFILING_CAT_COLLISION,
-#ifdef OPENGL
-	PROFILING_CAT_VISUALIZATION,
-#endif // OPENGL
 	PROFILING_CAT_NUM,
 };
 void profiling_start(void);

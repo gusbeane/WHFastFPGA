@@ -324,11 +324,6 @@ void reb_simulation_output_timing(struct reb_simulation* r, const double tmax){
             case PROFILING_CAT_COLLISION:
                 printf("Collisions     ");
                 break;
-#ifdef OPENGL
-            case PROFILING_CAT_VISUALIZATION:
-                printf("Visualization  ");
-                break;
-#endif // OPENGL
             case PROFILING_CAT_NUM:
                 printf("Other          ");
                 break;

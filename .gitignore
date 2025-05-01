@@ -47,3 +47,4 @@ problems/
 *.pete
 examples/solar_system_tes
 compile_commands.json
+examples/whfastfpga_solar_system/main

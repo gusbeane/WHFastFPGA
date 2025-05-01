@@ -6,15 +6,7 @@
 #include "whfastfpga.h"
 #include "util.h"
 
-struct Body {
-    std::array<double, 3> pos;
-    std::array<double, 3> vel;
-    double mass;
-};
-
-constexpr std::size_t N_BODIES = 9;
-
-constexpr std::array<Body, N_BODIES> solarsystem = {
+constexpr std::array<Body, N_BODIES> solarsystem_ics = {
     Body{ {-0.008816286905115728, -0.0010954664916791675,  0.0002143249385447027},
           { 0.00014315746073017681, -0.0004912441820893999, 8.127678560998346e-07},
           0.9999999999950272 },
@@ -46,5 +38,7 @@ constexpr std::array<Body, N_BODIES> solarsystem = {
 
 int main(int argc, char **argv)
 {
-    
+    std::array<Body, N_BODIES> solarsystem = solarsystem_ics;
+    move_to_center_of_mass(solarsystem);
+    inertial_to_democraticheliocentric_posvel(solarsystem);
 }

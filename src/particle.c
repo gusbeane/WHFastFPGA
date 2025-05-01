@@ -34,7 +34,6 @@
 #include "integrator_mercurius.h"
 #include "integrator_trace.h"
 #ifndef COLLISIONS_NONE
-#include "collision.h"
 #endif // COLLISIONS_NONE
 
 #ifdef GRAVITY_GRAPE

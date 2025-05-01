@@ -34,7 +34,6 @@
 #include "integrator_mercurius.h"
 #include "integrator_ias15.h"
 #include "integrator_whfast.h"
-#include "collision.h"
 #define MIN(a, b) ((a) > (b) ? (b) : (a))    ///< Returns the minimum of a and b
 #define MAX(a, b) ((a) > (b) ? (a) : (b))    ///< Returns the maximum of a and b
 
@@ -349,9 +348,6 @@ static void reb_mercurius_encounter_step(struct reb_simulation* const r, const d
         if (dtsign*(r->t+r->dt) > dtsign*t_needed){
             r->dt = t_needed-r->t;
         }
-
-        // Search and resolve collisions
-        reb_collision_search(r);
 
         // Do any additional post_timestep_modifications.
         // Note: post_timestep_modifications is called here but also

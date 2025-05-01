@@ -27,7 +27,6 @@
 #include <string.h>
 #include "particle.h"
 #include "rebound.h"
-#include "collision.h"
 #include "input.h"
 #include "simulationarchive.h"
 

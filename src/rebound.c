@@ -41,7 +41,6 @@
 #include "integrator_bs.h"
 #include "boundary.h"
 #include "gravity.h"
-#include "collision.h"
 #include "output.h"
 #include "tools.h"
 #include "particle.h"
@@ -113,11 +112,6 @@ void reb_simulation_step(struct reb_simulation* const r){
     PROFILING_START()
     reb_boundary_check(r);     
     PROFILING_STOP(PROFILING_CAT_BOUNDARY)
-
-    // Search for collisions using local and essential tree.
-    PROFILING_START()
-    reb_collision_search(r);
-    PROFILING_STOP(PROFILING_CAT_COLLISION)
     
     // Update walltime
     struct reb_timeval time_end;

@@ -265,56 +265,7 @@ EM_JS(void, reb_remove_last_line, (), {
 #endif
 
 int reb_simulation_output_screenshot(struct reb_simulation* r, const char* filename){
-#ifdef SERVER
-    if (!r->server_data){
-        reb_simulation_error(r, "To take a screenshot, call reb_simulation_start_server() and connect a web browser.");
-        return 0;
-    }
-
-    r->server_data->status_before_screenshot = r->status;
-    // Tell client to take screenshot
-    r->status = REB_STATUS_SCREENSHOT;
-
-    // Release mutex so client can pull simulation
-    if (r->server_data->mutex_locked_by_integrate){
-        pthread_mutex_unlock(&(r->server_data->mutex));
-    }
-
-    // Wait until screenshot arrives
-    while (!r->server_data->screenshot && r->status <0){
-        usleep(100);
-        if (reb_sigint > 1){
-            r->status = REB_STATUS_SIGINT;
-        }
-    }
-            
-    // Lock mutex again before continuing
-    if (r->server_data->mutex_locked_by_integrate){
-        pthread_mutex_lock(&(r->server_data->mutex)); 
-    }
-    
-    r->status = r->server_data->status_before_screenshot;
-
-    if (r->server_data->screenshot){
-        FILE* f = fopen(filename,"wb");
-        if (!f){
-            reb_simulation_error(r, "Error opening output file for screenshot.");
-            free(r->server_data->screenshot);
-            r->server_data->screenshot = 0;
-            r->server_data->N_screenshot = 0;
-            return 0;
-        }else{
-            fwrite(r->server_data->screenshot, r->server_data->N_screenshot, 1, f);
-            fclose(f);
-            free(r->server_data->screenshot);
-            r->server_data->screenshot = 0;
-            r->server_data->N_screenshot = 0;
-            return 1;
-        }
-    }
-#else //SERVER
     reb_simulation_error(r, "To take a screenshot compile with SERVER=1, call reb_simulation_start_server(), and connect with a web browser.");
-#endif //SERVER
     return 0;
 }
 

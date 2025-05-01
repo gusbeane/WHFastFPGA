@@ -1145,17 +1145,6 @@ struct reb_server_data {
     int port;
     int need_copy;
     int ready;
-#ifdef SERVER
-    int mutex_locked_by_integrate;  // Let's heartbeat find out if it is being called while the mutex is locked.
-#ifdef _WIN32
-    SOCKET socket;
-    HANDLE mutex;          // Mutex to allow for copying
-#else // _WIN32
-    int socket;
-    pthread_mutex_t mutex;          // Mutex to allow for copying
-    pthread_t server_thread;
-#endif // _WIN32
-#endif // SERVER
 };
 
 struct reb_display_settings {

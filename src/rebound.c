@@ -48,7 +48,6 @@
 #include "input.h"
 #include "binarydiff.h"
 #include "simulationarchive.h"
-#include "server.h"
 #include "display.h"
 #define MAX(a, b) ((a) < (b) ? (b) : (a))       ///< Returns the maximum of a and b
 #define STRINGIFY(s) str(s)
@@ -279,9 +278,6 @@ void reb_simulation_free_pointers(struct reb_simulation* const r){
         r->display_data = NULL;
     }
 #endif //OPENGL
-#ifdef SERVER
-    reb_simulation_stop_server(r);
-#endif // SERVER
     if (r->gravity_cs){
         free(r->gravity_cs  );
     }
@@ -731,17 +727,6 @@ static void* reb_simulation_integrate_raw(void* args){
             pthread_mutex_lock(&(r->display_data->mutex)); 
         }
 #endif //OPENGL
-#ifdef SERVER
-        if (r->server_data){
-            // Note: Mutex is not FIFO.
-            // Allow time for mutex to lock in display.c before it is relocked here.
-            while (r->server_data->need_copy == 1){
-                usleep(10);
-            }
-            pthread_mutex_lock(&(r->server_data->mutex)); 
-            r->server_data->mutex_locked_by_integrate = 1;
-        }
-#endif //SERVER
         if (r->simulationarchive_filename){ reb_simulationarchive_heartbeat(r);}
         reb_simulation_step(r); 
         reb_run_heartbeat(r);
@@ -753,12 +738,6 @@ static void* reb_simulation_integrate_raw(void* args){
             pthread_mutex_unlock(&(r->display_data->mutex));
         }
 #endif //OPENGL
-#ifdef SERVER
-        if (r->server_data){
-            pthread_mutex_unlock(&(r->server_data->mutex));
-            r->server_data->mutex_locked_by_integrate = 0;
-        }
-#endif //SERVER
         if (r->usleep > 0){
             usleep(r->usleep);
         }

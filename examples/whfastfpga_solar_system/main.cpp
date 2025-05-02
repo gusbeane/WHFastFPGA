@@ -4,6 +4,7 @@
 #include <array>
 #include <iostream>
 #include "whfastfpga.h"
+#include "whfast512.h"
 #include "util.h"
 
 constexpr std::array<Body, N_BODIES> solarsystem_ics = {
@@ -41,4 +42,9 @@ int main(int argc, char **argv)
     std::array<Body, N_BODIES> solarsystem = solarsystem_ics;
     move_to_center_of_mass(solarsystem);
     inertial_to_democraticheliocentric_posvel(solarsystem);
+
+    double tmax = 2.0 * M_PI * 1e5; // 100 kyr
+    double dt = 5.0 / 365.25 * 2 * M_PI; // 5 days
+    long Nint = static_cast<long>(tmax / dt);
+    whfast512_integrate(solarsystem, dt, Nint);
 }

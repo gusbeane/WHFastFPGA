@@ -3,7 +3,7 @@ CC := g++
 CFLAGS := -Wall -Wextra -I. -std=c++11
 
 # Files
-SRCS := main.cpp whfastfpga.cpp whfastfpga_kernel.cpp util.cpp
+SRCS := main.cpp whfastfpga.cpp whfastfpga_kernel.cpp whfast512.cpp whfast512_kernel.cpp util.cpp
 OBJS := $(SRCS:.c=.o)
 TARGET := main
 

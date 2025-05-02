@@ -31,26 +31,30 @@ void move_to_center_of_mass(std::array<Body, N_BODIES>& bodies) {
 void inertial_to_democraticheliocentric_posvel(std::array<Body, N_BODIES>& bodies) {
     // Assume bodies[0] is the central star
     double m0 = bodies[0].mass;
+
     // Shift planets to heliocentric coordinates (relative to star)
     for (std::size_t i = 1; i < N_BODIES; ++i) {
         for (int j = 0; j < 3; ++j) {
             bodies[i].pos[j] -= bodies[0].pos[j];
-            bodies[i].vel[j] -= bodies[0].vel[j];
         }
     }
-    // Compute center of mass of planets (in new heliocentric frame)
-    std::array<double, 3> sum_r = {0.0, 0.0, 0.0};
-    std::array<double, 3> sum_v = {0.0, 0.0, 0.0};
+    
+    // Compute center of mass velocity of solar system
+    std::array<double, 3> com_vel = {0.0, 0.0, 0.0};
     for (std::size_t i = 1; i < N_BODIES; ++i) {
         for (int j = 0; j < 3; ++j) {
-            sum_r[j] += bodies[i].mass * bodies[i].pos[j];
-            sum_v[j] += bodies[i].mass * bodies[i].vel[j];
+            com_vel[j] += bodies[i].mass * bodies[i].vel[j];
         }
     }
-    // Place the star at the negative of the planets' center of mass
     for (int j = 0; j < 3; ++j) {
-        bodies[0].pos[j] = -sum_r[j] / m0;
-        bodies[0].vel[j] = -sum_v[j] / m0;
+        com_vel[j] /= m0;
+    }
+
+    // Make solar system at rest
+    for (std::size_t i = 1; i < N_BODIES; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            bodies[i].vel[j] -= com_vel[j];
+        }
     }
 }
 

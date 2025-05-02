@@ -2,6 +2,7 @@
 #include <array>
 #include "whfast512.h"
 #include "util.h"
+#include <immintrin.h>
 
 // Prepare structure-of-arrays for vectorization; actual integration to be implemented
 // Integrate up to time tmax using timestep dt; returns status

@@ -12,6 +12,7 @@ LIB_SRCS  := whfastfpga.cpp \
              whfastfpga_kernel.cpp \
              whfast512.cpp \
              whfast512_kernel.cpp \
+			 whfast512_constants.cpp \
              util.cpp
 
 MAIN_SRC  := main.cpp

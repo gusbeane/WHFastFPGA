@@ -1,8 +1,9 @@
-#include "whfast512_kernel.h"
 #include <array>
-#include "whfast512.h"
-#include "util.h"
 #include <immintrin.h>
+#include "util.h"
+#include "whfast512.h"
+#include "whfast512_kernel.h"
+#include "whfast512_constants.h"
 
 // Prepare structure-of-arrays for vectorization; actual integration to be implemented
 // Integrate up to time tmax using timestep dt; returns status
@@ -37,4 +38,9 @@ int whfast512_integrate(std::array<Body, N_BODIES>& solarsystem, double dt, long
         solarsystem[1].vel[2], solarsystem[2].vel[2], solarsystem[3].vel[2], solarsystem[4].vel[2],
         solarsystem[5].vel[2], solarsystem[6].vel[2], solarsystem[7].vel[2], solarsystem[8].vel[2]
     );
+
+    // Calculate necessary constants
+    // Constructs a struct called kConsts with the constants
+    initialize_constants(solarsystem[0].mass, m_vec);
+
 }

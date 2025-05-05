@@ -5,6 +5,7 @@
 #include <iostream>
 #include "whfastfpga.h"
 #include "whfast512.h"
+#include "whfast512_constants.h"
 #include "util.h"
 
 constexpr std::array<Body, N_BODIES> solarsystem_ics = {

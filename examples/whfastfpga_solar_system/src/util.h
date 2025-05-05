@@ -11,6 +11,8 @@ struct Body {
 
 constexpr std::size_t N_BODIES = 9;
 
+struct Body compute_com(std::array<Body, N_BODIES>& bodies);
+
 void move_to_center_of_mass(std::array<Body, N_BODIES>& bodies);
 
 // Transforms positions and velocities to democratic heliocentric coordinates

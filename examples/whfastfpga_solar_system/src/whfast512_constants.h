@@ -12,6 +12,7 @@ struct Constants {
     __m512d five;
     __m512d sixteen;
     __m512d twenty;
+    double M0;
     __m512d _M;
     __m512i so2;
     __m512i so1;

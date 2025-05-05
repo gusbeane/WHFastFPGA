@@ -28,6 +28,7 @@ static Constants buildConstants(double M0, __m512d m_vec) {
     for (int i = 0; i < 8; i++){
         M[i] = M0;
     }
+    c.M0 = M0;
     c._M = _mm512_loadu_pd(M);
 
     c.so1 = _mm512_set_epi64(1, 2, 3, 0, 6, 7, 4, 5);

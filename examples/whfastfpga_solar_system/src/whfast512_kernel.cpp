@@ -193,6 +193,34 @@ void whfast512_drift_step(__m512d *x_vec,  __m512d *y_vec,  __m512d *z_vec,
 
 // }
 
+// Performs one complete jump step
+void whfast512_jump_step(__m512d *x_vec, __m512d *y_vec, __m512d *z_vec,
+                         __m512d *vx_vec, __m512d *vy_vec, __m512d *vz_vec,
+                         __m512d m_vec, double dt)
+{
+    __m512d pf512 = _mm512_set1_pd(dt / kConsts->M0);
+
+    __m512d sumx = _mm512_mul_pd(m_vec, *vx_vec);
+    __m512d sumy = _mm512_mul_pd(m_vec, *vy_vec);
+    __m512d sumz = _mm512_mul_pd(m_vec, *vz_vec);
+
+    sumx = _mm512_add_pd(_mm512_shuffle_pd(sumx, sumx, 0x55), sumx); // Swapping neighbouring elements
+    sumx = _mm512_add_pd(_mm512_permutex_pd(sumx, _MM_PERM_ABCD), sumx);
+    sumx = _mm512_add_pd(_mm512_shuffle_f64x2(sumx, sumx, 78), sumx); // 78 is _MM_SHUFFLE(1,0,3,2), changed for icx
+
+    sumy = _mm512_add_pd(_mm512_shuffle_pd(sumy, sumy, 0x55), sumy);
+    sumy = _mm512_add_pd(_mm512_permutex_pd(sumy, _MM_PERM_ABCD), sumy);
+    sumy = _mm512_add_pd(_mm512_shuffle_f64x2(sumy, sumy, 78), sumy);
+
+    sumz = _mm512_add_pd(_mm512_shuffle_pd(sumz, sumz, 0x55), sumz);
+    sumz = _mm512_add_pd(_mm512_permutex_pd(sumz, _MM_PERM_ABCD), sumz);
+    sumz = _mm512_add_pd(_mm512_shuffle_f64x2(sumz, sumz, 78), sumz);
+
+    *x_vec = _mm512_fmadd_pd(sumx, pf512, *x_vec);
+    *y_vec = _mm512_fmadd_pd(sumy, pf512, *y_vec);
+    *z_vec = _mm512_fmadd_pd(sumz, pf512, *z_vec);
+}
+
 // void whfast512_interaction_step(__m512d *x_vec,  __m512d *y_vec,  __m512d *z_vec,
 //     __m512d *vx_vec, __m512d *vy_vec, __m512d *vz_vec,
 //     __m512d m_vec, double dt)
@@ -214,7 +242,7 @@ void whfast512_kernel(__m512d *x_vec, __m512d *y_vec, __m512d *z_vec,
     for (int i = 0; i < Nint - 1; i++)
     {
         // do jump step. this needs to be split when we add gr
-        // whfast512_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt);
+        whfast512_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt);
 
         // do interaction step
         // whfast512_interaction_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt);

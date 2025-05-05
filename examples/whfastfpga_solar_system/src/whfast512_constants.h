@@ -1,5 +1,6 @@
 #pragma once
 #include <immintrin.h>
+#include "util.h"
 
 struct Constants {
     __m512d invfactorial512[35];

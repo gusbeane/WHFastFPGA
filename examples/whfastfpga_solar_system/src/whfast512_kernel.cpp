@@ -171,13 +171,19 @@ void whfast512_kepler_step(__m512d *x_vec,  __m512d *y_vec,  __m512d *z_vec,
         *z_vec = nz;
 }
 
+void whfast512_com_step(Body *com, double dt)
+{
+    for(int i=0; i<3; i++)
+        com->pos[i] += dt * com->vel[i];
+}
+
 void whfast512_drift_step(__m512d *x_vec,  __m512d *y_vec,  __m512d *z_vec,
     __m512d *vx_vec, __m512d *vy_vec, __m512d *vz_vec,
-    __m512d m_vec, double dt)
+    __m512d m_vec, Body *com, double dt)
 {
 // We first do the kepler step, then the com step.
-whfast512_kepler_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt);
-// whfast512_com_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt);
+    whfast512_kepler_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt);
+    whfast512_com_step(com, dt);
 }
 
 // void whfast512_jump_step(__m512d *x_vec,  __m512d *y_vec,  __m512d *z_vec,
@@ -196,13 +202,13 @@ whfast512_kepler_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt);
 
 void whfast512_kernel(__m512d *x_vec, __m512d *y_vec, __m512d *z_vec,
                       __m512d *vx_vec, __m512d *vy_vec, __m512d *vz_vec,
-                      __m512d m_vec, double dt, long Nint)
+                      __m512d m_vec, Body *com, double dt, long Nint)
 {
     // Call the main integration routine
     // This is where the actual integration happens
 
     // We first do a half drift step
-    whfast512_drift_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt / 2.);
+    whfast512_drift_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, com, dt/2.);
 
     // Now we enter main loop
     for (int i = 0; i < Nint - 1; i++)
@@ -214,11 +220,11 @@ void whfast512_kernel(__m512d *x_vec, __m512d *y_vec, __m512d *z_vec,
         // whfast512_interaction_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt);
 
         // do drift step
-        whfast512_drift_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt);
+        whfast512_drift_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, com, dt);
     }
 
     // // Do final step and synchronize
     // whfast512_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt);
     // whfast512_interaction_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt);
-    whfast512_drift_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt / 2.);
+    whfast512_drift_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, com, dt/2.);
 }

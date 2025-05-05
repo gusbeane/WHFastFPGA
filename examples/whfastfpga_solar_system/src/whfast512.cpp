@@ -7,7 +7,7 @@
 
 // Prepare structure-of-arrays for vectorization; actual integration to be implemented
 // Integrate up to time tmax using timestep dt; returns status
-int whfast512_integrate(std::array<Body, N_BODIES>& solarsystem, double dt, long Nint)
+int whfast512_integrate(std::array<Body, N_BODIES>& solarsystem, Body *com, double dt, long Nint)
 {
     // Prepare AVX-512 vectors for bodies 1-8 (ignore solarsystem[0])
     __m512d m_vec  = _mm512_setr_pd(
@@ -47,7 +47,8 @@ int whfast512_integrate(std::array<Body, N_BODIES>& solarsystem, double dt, long
     whfast512_kernel(
         &x_vec, &y_vec, &z_vec,
         &vx_vec, &vy_vec, &vz_vec,
-        m_vec, dt, Nint
+        m_vec, com, dt, Nint
     );
 
+    return 0;
 }

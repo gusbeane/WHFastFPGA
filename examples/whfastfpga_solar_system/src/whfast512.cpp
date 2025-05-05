@@ -43,4 +43,11 @@ int whfast512_integrate(std::array<Body, N_BODIES>& solarsystem, double dt, long
     // Constructs a struct called kConsts with the constants
     initialize_constants(solarsystem[0].mass, m_vec);
 
+    // Now call the main kernel
+    whfast512_kernel(
+        &x_vec, &y_vec, &z_vec,
+        &vx_vec, &vy_vec, &vz_vec,
+        m_vec, dt, Nint
+    );
+
 }

@@ -42,6 +42,51 @@ static void inline mm_stiefel_Gs03_avx512(__m512d * Gs0, __m512d * Gs1, __m512d 
     *Gs2 = _mm512_mul_pd(*Gs2,X2); 
 };
 
+// Newton step function for Kepler iteration
+static void inline newton_step(__m512d* X, __m512d beta, __m512d r0, __m512d eta0, __m512d zeta0) {
+    __m512d Gs1, Gs2, Gs3;
+    mm_stiefel_Gs13_avx512(&Gs1, &Gs2, &Gs3, beta, *X);
+    
+    __m512d eta0Gs1zeta0Gs2 = _mm512_mul_pd(eta0, Gs1);
+    eta0Gs1zeta0Gs2 = _mm512_fmadd_pd(zeta0, Gs2, eta0Gs1zeta0Gs2);
+    
+    __m512d ri = _mm512_add_pd(r0, eta0Gs1zeta0Gs2);
+    ri = _mm512_div_pd(kConsts->one, ri);
+    
+    *X = _mm512_mul_pd(*X, eta0Gs1zeta0Gs2);
+    *X = _mm512_fnmadd_pd(eta0, Gs2, *X);
+    *X = _mm512_fnmadd_pd(zeta0, Gs3, *X);
+    *X = _mm512_add_pd(_mm512_set1_pd(1.0), *X); // Using dt parameter
+    *X = _mm512_mul_pd(ri, *X);
+}
+
+// Halley step function for Kepler iteration
+static void inline halley_step(__m512d* X, __m512d beta, __m512d r0, __m512d eta0, __m512d zeta0, __m512d _dt) {
+    __m512d Gs0, Gs1, Gs2, Gs3;
+    mm_stiefel_Gs03_avx512(&Gs0, &Gs1, &Gs2, &Gs3, beta, *X);
+    
+    __m512d f = _mm512_fmsub_pd(r0, *X, _dt);
+    f = _mm512_fmadd_pd(eta0, Gs2, f);
+    f = _mm512_fmadd_pd(zeta0, Gs3, f);
+    
+    __m512d fp = _mm512_fmadd_pd(eta0, Gs1, r0);
+    fp = _mm512_fmadd_pd(zeta0, Gs2, fp);
+    
+    __m512d fpp = _mm512_mul_pd(eta0, Gs0);
+    fpp = _mm512_fmadd_pd(zeta0, Gs1, fpp);
+    
+    __m512d denom = _mm512_mul_pd(fp, fp);
+    denom = _mm512_mul_pd(denom, kConsts->sixteen);
+    
+    denom = _mm512_fnmadd_pd(_mm512_mul_pd(f, fpp), kConsts->twenty, denom);
+    /* not included: _mm512_abs_pd(denom) */
+    denom = _mm512_sqrt_pd(denom);
+    denom = _mm512_add_pd(fp, denom);
+    
+    *X = _mm512_fmsub_pd(*X, denom, _mm512_mul_pd(f, kConsts->five));
+    *X = _mm512_div_pd(*X, denom);
+}
+
 void whfast512_kepler_step(__m512d *x_vec,  __m512d *y_vec,  __m512d *z_vec,
                           __m512d *vx_vec, __m512d *vy_vec, __m512d *vz_vec,
                           __m512d m_vec, double dt)
@@ -74,43 +119,6 @@ void whfast512_kepler_step(__m512d *x_vec,  __m512d *y_vec,  __m512d *z_vec,
         __m512d eta0Gs1zeta0Gs2; 
         __m512d ri; 
     
-    #define NEWTON_STEP() \
-        mm_stiefel_Gs13_avx512(&Gs1, &Gs2, &Gs3, beta, X);\
-        eta0Gs1zeta0Gs2 = _mm512_mul_pd(eta0, Gs1); \
-        eta0Gs1zeta0Gs2 = _mm512_fmadd_pd(zeta0,Gs2, eta0Gs1zeta0Gs2); \
-        ri = _mm512_add_pd(r0, eta0Gs1zeta0Gs2); \
-        ri = _mm512_div_pd(kConsts->one, ri); \
-        \
-        X = _mm512_mul_pd(X, eta0Gs1zeta0Gs2);\
-        X = _mm512_fnmadd_pd(eta0, Gs2, X);\
-        X = _mm512_fnmadd_pd(zeta0, Gs3, X);\
-        X = _mm512_add_pd(_dt, X);\
-        X = _mm512_mul_pd(ri, X);
-    
-    
-    #define HALLEY_STEP() \
-        mm_stiefel_Gs03_avx512(&Gs0, &Gs1, &Gs2, &Gs3, beta, X);\
-        f = _mm512_fmsub_pd(r0,X,_dt);\
-        f = _mm512_fmadd_pd(eta0, Gs2, f);\
-        f = _mm512_fmadd_pd(zeta0, Gs3, f);\
-        \
-        fp = _mm512_fmadd_pd(eta0, Gs1, r0);\
-        fp = _mm512_fmadd_pd(zeta0, Gs2, fp);\
-        \
-        fpp = _mm512_mul_pd(eta0, Gs0);\
-        fpp = _mm512_fmadd_pd(zeta0, Gs1, fpp);\
-        \
-        denom = _mm512_mul_pd(fp,fp);\
-        denom = _mm512_mul_pd(denom,kConsts->sixteen);\
-        \
-        denom = _mm512_fnmadd_pd(_mm512_mul_pd(f,fpp),kConsts->twenty, denom);\
-        /* not included: _mm512_abs_pd(denom) */;\
-        denom = _mm512_sqrt_pd(denom);\
-        denom = _mm512_add_pd(fp, denom);\
-        \
-        X = _mm512_fmsub_pd(X, denom, _mm512_mul_pd(f, kConsts->five));\
-        X = _mm512_div_pd(X, denom);
-    
         // Initial guess
         __m512d dtr0i = _mm512_mul_pd(_dt,r0i);
         __m512d X = _mm512_mul_pd(dtr0i,eta0);
@@ -119,11 +127,9 @@ void whfast512_kepler_step(__m512d *x_vec,  __m512d *y_vec,  __m512d *z_vec,
         X = _mm512_mul_pd(dtr0i,X);
     
         // Iterations
-        __m512d f, fp, fpp, denom, Gs0;
-        HALLEY_STEP();
-        HALLEY_STEP();
-        NEWTON_STEP();
-        // +1 below
+        halley_step(&X, beta, r0, eta0, zeta0, _dt);
+        halley_step(&X, beta, r0, eta0, zeta0, _dt);
+        newton_step(&X, beta, r0, eta0, zeta0);
         
         // Final Newton step (note: X not needed after this) 
         mm_stiefel_Gs13_avx512(&Gs1, &Gs2, &Gs3, beta, X);

@@ -17,14 +17,17 @@ LIB_SRCS  := whfastfpga.cpp \
 
 MAIN_SRC  := main.cpp
 TEST_SRC  := test.cpp
+GENGOLD_SRC := gen_golden.cpp
 
 # Object files go into build/, mirror the basename of each .cpp
 MAIN_OBJS := $(patsubst %.cpp,$(OBJDIR)/%.o,$(MAIN_SRC)  $(LIB_SRCS))
 TEST_OBJS := $(patsubst %.cpp,$(OBJDIR)/%.o,$(TEST_SRC)  $(LIB_SRCS))
+GENGOLD_OBJS := $(patsubst %.cpp,$(OBJDIR)/%.o,$(GENGOLD_SRC)  $(LIB_SRCS))
 
 # Final executables
 TARGET       := main
 TEST_TARGET  := test
+GENGOLD_TARGET := gen_golden
 
 # Default target: build 'main'
 .PHONY: all
@@ -41,6 +44,13 @@ test: $(TEST_TARGET)
 $(TEST_TARGET): $(TEST_OBJS)
 	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^
 
+# Add gen_golden target
+.PHONY: gengold
+gengold: $(GENGOLD_TARGET)
+
+$(GENGOLD_TARGET): $(GENGOLD_OBJS)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^
+
 # Ensure build/ exists, then compile any src/foo.cpp → build/foo.o
 $(OBJDIR):
 	mkdir -p $@
@@ -51,4 +61,4 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.cpp | $(OBJDIR)
 # Clean out all build artifacts
 .PHONY: clean
 clean:
-	rm -rf $(OBJDIR) $(TARGET) $(TEST_TARGET)
+	rm -rf $(OBJDIR) $(TARGET) $(TEST_TARGET) $(GENGOLD_TARGET)

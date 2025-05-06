@@ -431,27 +431,35 @@ void whfast512_kernel(__m512d *x_vec, __m512d *y_vec, __m512d *z_vec,
     // Call the main integration routine
     // This is where the actual integration happens
 
-    // We first do a half drift step
-    whfast512_drift_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, com, dt/2.);
+    // Perform the initial half-drift step
+    whfast512_drift_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, com, dt / 2.0);
 
-        // Now we enter main loop
     for (int i = 0; i < Nint - 1; i++)
     {
-        // do first half-jump step
-        whfast512_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt / 2.);
+        // Perform the jump step (first half)
+        whfast512_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt / 2.0);
 
-        // do interaction step
+        // Perform the interaction step
         whfast512_interaction_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt);
 
-        // do second half-jump step
-        whfast512_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt / 2.);
+        // Perform the jump step (second half)
+        whfast512_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt / 2.0);
 
-        // do drift step
+        // Perform the drift step
         whfast512_drift_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, com, dt);
     }
 
-    // // Do final step and synchronize
-    // whfast512_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt);
-    // whfast512_interaction_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt);
-    whfast512_drift_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, com, dt/2.);
+    // Final iteration happens outside loop to avoid branching
+
+    // Perform the jump step (first half)
+    whfast512_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt / 2.0);
+
+    // Perform the interaction step
+    whfast512_interaction_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt);
+
+    // Perform the jump step (second half)
+    whfast512_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt / 2.0);
+
+    // Perform the final half-drift step
+    whfast512_drift_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, com, dt / 2.0);
 }

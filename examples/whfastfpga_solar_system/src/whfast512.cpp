@@ -26,15 +26,9 @@ int whfast512_integrate(std::array<Body, N_BODIES>& solarsystem, Body *com, doub
         m_vec, com, dt, Nint
     );
 
-    // // Update positions and velocities of the bodies using a loop with AVX-512
-    // for (int i = 1; i < N_BODIES; i++)
-    // {
-    //     solarsystem[i].pos[0] = _mm512_extractf64x2_pd(x_vec, (i - 1) / 4)[(i - 1) % 4];
-    //     solarsystem[i].pos[1] = _mm512_extractf64x2_pd(y_vec, (i - 1) / 4)[(i - 1) % 4];
-    //     solarsystem[i].pos[2] = _mm512_extractf64x2_pd(z_vec, (i - 1) / 4)[(i - 1) % 4];
-    //     solarsystem[i].vel[0] = _mm512_extractf64x2_pd(vx_vec, (i - 1) / 4)[(i - 1) % 4];
-    //     solarsystem[i].vel[1] = _mm512_extractf64x2_pd(vy_vec, (i - 1) / 4)[(i - 1) % 4];
-    //     solarsystem[i].vel[2] = _mm512_extractf64x2_pd(vz_vec, (i - 1) / 4)[(i - 1) % 4];
-    // }
+    // Convert back to inertial coordinates and store into solarsystem
+    democraticheliocentric_to_inertial_posvel(solarsystem, com, x_vec, y_vec, z_vec,
+        vx_vec, vy_vec, vz_vec, m_vec);
+
     return 0;
 }

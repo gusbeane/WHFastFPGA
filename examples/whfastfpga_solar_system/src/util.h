@@ -22,4 +22,10 @@ void inertial_to_democraticheliocentric_posvel(std::array<Body, N_BODIES> &bodie
                                                __m512d *vx_vec, __m512d *vy_vec, __m512d *vz_vec,
                                                __m512d *m_vec);
 
+// Transforms positions and velocities from democratic heliocentric to inertial coordinates
+void democraticheliocentric_to_inertial_posvel(std::array<Body, N_BODIES> &bodies, Body *com,
+                                               __m512d x_vec, __m512d y_vec, __m512d z_vec,
+                                               __m512d vx_vec, __m512d vy_vec, __m512d vz_vec,
+                                               __m512d m_vec);
+
 #endif // UTIL_H

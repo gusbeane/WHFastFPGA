@@ -110,7 +110,10 @@ double run(int use_whfast512){
 
 
     gettimeofday(&time_beginning,NULL);
-    double tmax = 2.*M_PI*1e5; // 100 kyr
+    double tmax = 2.*M_PI*1e2; // 100 yr
+    long Nint = (long)(tmax/r->dt);
+    tmax = Nint*r->dt;
+
     int err = reb_simulation_integrate(r,  tmax);
     if (err>0){
         printf("An error occured during the integration.\n");

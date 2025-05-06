@@ -110,3 +110,64 @@ void inertial_to_democraticheliocentric_posvel(std::array<Body, N_BODIES> &bodie
         bodies[1].vel[2], bodies[2].vel[2], bodies[3].vel[2], bodies[4].vel[2],
         bodies[5].vel[2], bodies[6].vel[2], bodies[7].vel[2], bodies[8].vel[2]);
 }
+
+void democraticheliocentric_to_inertial_posvel(std::array<Body, N_BODIES> &bodies, Body *com,
+                                               __m512d x_vec, __m512d y_vec, __m512d z_vec,
+                                               __m512d vx_vec, __m512d vy_vec, __m512d vz_vec,
+                                               __m512d m_vec)
+{
+    // First store into normal arrays
+    double x[N_BODIES - 1], y[N_BODIES - 1], z[N_BODIES - 1];
+    double vx[N_BODIES - 1], vy[N_BODIES - 1], vz[N_BODIES - 1];
+    double m[N_BODIES - 1];
+    _mm512_storeu_pd(x, x_vec);
+    _mm512_storeu_pd(y, y_vec);
+    _mm512_storeu_pd(z, z_vec);
+    _mm512_storeu_pd(vx, vx_vec);
+    _mm512_storeu_pd(vy, vy_vec);
+    _mm512_storeu_pd(vz, vz_vec);
+    _mm512_storeu_pd(m, m_vec);
+
+    // Compute center of mass of planets
+    struct Body com_planets = {0};
+    for (int i = 0; i < N_BODIES - 1; i++)
+    {
+        com_planets.mass += m[i];
+        com_planets.pos[0] += m[i] * x[i];
+        com_planets.pos[1] += m[i] * y[i];
+        com_planets.pos[2] += m[i] * z[i];
+        com_planets.vel[0] += m[i] * vx[i];
+        com_planets.vel[1] += m[i] * vy[i];
+        com_planets.vel[2] += m[i] * vz[i];
+
+        // Add com vel to set bodies velocities
+        bodies[i + 1].vel[0] = vx[i] + com->vel[0];
+        bodies[i + 1].vel[1] = vy[i] + com->vel[1];
+        bodies[i + 1].vel[2] = vz[i] + com->vel[2];
+    }
+
+    for (int i = 0; i < 3; ++i)
+    {
+        // We divide by total mass of the system
+        com_planets.pos[i] /= com->mass;
+        // com_planets.vel[i] /= com->mass;
+    }
+
+    // Set solar position and velocity
+    bodies[0].pos[0] = com->pos[0] - com_planets.pos[0];
+    bodies[0].pos[1] = com->pos[1] - com_planets.pos[1];
+    bodies[0].pos[2] = com->pos[2] - com_planets.pos[2];
+    bodies[0].vel[0] = com->vel[0] - com_planets.vel[0];
+    bodies[0].vel[1] = com->vel[1] - com_planets.vel[1];
+    bodies[0].vel[2] = com->vel[2] - com_planets.vel[2];
+
+    // Set planet positions
+    for (int i = 0; i < N_BODIES - 1; i++)
+    {
+        bodies[i + 1].pos[0] = x[i] + bodies[0].pos[0];
+        bodies[i + 1].pos[1] = y[i] + bodies[0].pos[1];
+        bodies[i + 1].pos[2] = z[i] + bodies[0].pos[2];
+    }
+
+    return;
+}

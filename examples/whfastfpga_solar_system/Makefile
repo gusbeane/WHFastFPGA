@@ -18,16 +18,19 @@ LIB_SRCS  := whfastfpga.cpp \
 MAIN_SRC  := main.cpp
 TEST_SRC  := test.cpp
 GENGOLD_SRC := gen_golden.cpp
+TESTGOLD_SRC := test_golden.cpp
 
 # Object files go into build/, mirror the basename of each .cpp
 MAIN_OBJS := $(patsubst %.cpp,$(OBJDIR)/%.o,$(MAIN_SRC)  $(LIB_SRCS))
 TEST_OBJS := $(patsubst %.cpp,$(OBJDIR)/%.o,$(TEST_SRC)  $(LIB_SRCS))
 GENGOLD_OBJS := $(patsubst %.cpp,$(OBJDIR)/%.o,$(GENGOLD_SRC)  $(LIB_SRCS))
+TESTGOLD_OBJS := $(patsubst %.cpp,$(OBJDIR)/%.o,$(TESTGOLD_SRC)  $(LIB_SRCS))
 
 # Final executables
 TARGET       := main
 TEST_TARGET  := test
 GENGOLD_TARGET := gen_golden
+TESTGOLD_TARGET := test_golden
 
 # Default target: build 'main'
 .PHONY: all
@@ -38,10 +41,11 @@ $(TARGET): $(MAIN_OBJS)
 	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^
 
 # 'make test' builds the 'test' executable
+# Overwrite 'make test' to build and run 'test_golden'
 .PHONY: test
-test: $(TEST_TARGET)
+test: $(TESTGOLD_TARGET)
 
-$(TEST_TARGET): $(TEST_OBJS)
+$(TESTGOLD_TARGET): $(TESTGOLD_OBJS)
 	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^
 
 # Add gen_golden target

@@ -144,23 +144,15 @@ void whfast512_kepler_step(__m512d *x_vec,  __m512d *y_vec,  __m512d *z_vec,
         __m512d nf = _mm512_mul_pd(kConsts->_M,Gs2); //negative f
         nf = _mm512_mul_pd(nf,r0i);
 
-        printf("nf[0] = %f\n", nf[0]);
-    
         __m512d g = _mm512_fnmadd_pd(kConsts->_M, Gs3, _dt);
 
-        printf("g[0] = %f\n", g[0]);
-    
         __m512d nfd = _mm512_mul_pd(kConsts->_M, Gs1); // negative fd
         nfd = _mm512_mul_pd(nfd, r0i);
         nfd = _mm512_mul_pd(nfd, ri);
 
-        printf("nfd[0] = %f\n", nfd[0]);
-    
         __m512d ngd = _mm512_mul_pd(kConsts->_M, Gs2); // negative gd
         ngd = _mm512_mul_pd(ngd, ri);
 
-        printf("ngd[0] = %f\n", ngd[0]);
-    
         __m512d nx = _mm512_fnmadd_pd(nf, *x_vec, *x_vec);
         nx = _mm512_fmadd_pd(g, *vx_vec, nx);
         __m512d ny = _mm512_fnmadd_pd(nf, *y_vec, *y_vec);

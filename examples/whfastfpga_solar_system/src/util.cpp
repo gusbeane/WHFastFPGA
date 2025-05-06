@@ -1,6 +1,7 @@
 #include <array>
 #include <cmath>
 #include <cstdio>
+#include <immintrin.h>
 #include "util.h"
 
 struct Body compute_com(std::array<Body, N_BODIES> &bodies)
@@ -40,7 +41,10 @@ void move_to_center_of_mass(std::array<Body, N_BODIES> &bodies)
 }
 
 // Transforms positions and velocities from barycentric inertial to democratic heliocentric coordinates
-void inertial_to_democraticheliocentric_posvel(std::array<Body, N_BODIES> &bodies, Body *com)
+void inertial_to_democraticheliocentric_posvel(std::array<Body, N_BODIES> &bodies, Body *com,
+                                               __m512d *x_vec, __m512d *y_vec, __m512d *z_vec,
+                                               __m512d *vx_vec, __m512d *vy_vec, __m512d *vz_vec,
+                                               __m512d *m_vec)
 {
     // Assume bodies[0] is the central star
 
@@ -83,4 +87,26 @@ void inertial_to_democraticheliocentric_posvel(std::array<Body, N_BODIES> &bodie
             bodies[i].vel[j] -= com->vel[j];
         }
     }
+
+    *m_vec = _mm512_setr_pd(
+        bodies[1].mass, bodies[2].mass, bodies[3].mass, bodies[4].mass,
+        bodies[5].mass, bodies[6].mass, bodies[7].mass, bodies[8].mass);
+    *x_vec = _mm512_setr_pd(
+        bodies[1].pos[0], bodies[2].pos[0], bodies[3].pos[0], bodies[4].pos[0],
+        bodies[5].pos[0], bodies[6].pos[0], bodies[7].pos[0], bodies[8].pos[0]);
+    *y_vec = _mm512_setr_pd(
+        bodies[1].pos[1], bodies[2].pos[1], bodies[3].pos[1], bodies[4].pos[1],
+        bodies[5].pos[1], bodies[6].pos[1], bodies[7].pos[1], bodies[8].pos[1]);
+    *z_vec = _mm512_setr_pd(
+        bodies[1].pos[2], bodies[2].pos[2], bodies[3].pos[2], bodies[4].pos[2],
+        bodies[5].pos[2], bodies[6].pos[2], bodies[7].pos[2], bodies[8].pos[2]);
+    *vx_vec = _mm512_setr_pd(
+        bodies[1].vel[0], bodies[2].vel[0], bodies[3].vel[0], bodies[4].vel[0],
+        bodies[5].vel[0], bodies[6].vel[0], bodies[7].vel[0], bodies[8].vel[0]);
+    *vy_vec = _mm512_setr_pd(
+        bodies[1].vel[1], bodies[2].vel[1], bodies[3].vel[1], bodies[4].vel[1],
+        bodies[5].vel[1], bodies[6].vel[1], bodies[7].vel[1], bodies[8].vel[1]);
+    *vz_vec = _mm512_setr_pd(
+        bodies[1].vel[2], bodies[2].vel[2], bodies[3].vel[2], bodies[4].vel[2],
+        bodies[5].vel[2], bodies[6].vel[2], bodies[7].vel[2], bodies[8].vel[2]);
 }

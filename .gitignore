@@ -55,4 +55,3 @@ examples/whfastfpga_solar_system/gen_golden
 sw*/main
 sw*/test_golden
 sw*/gen_golden
-sw*/golden/*.csv

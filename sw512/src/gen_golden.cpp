@@ -12,6 +12,7 @@
 #include "whfast512_constants.h"
 #include "whfast512_kernel.h" // Ensure this header contains the declaration of whfast512_drift_step
 #include "util.h"
+#include <immintrin.h> // For AVX-512
 
 // Initial conditions copied from main.cpp
 constexpr std::array<Body, N_BODIES> solarsystem_ics = {
@@ -72,6 +73,51 @@ void output_to_csv(const std::array<Body, N_BODIES>& solarsystem, const std::str
     file.close();
 }
 
+// Rewrite to accept AVX-512 vectors and extract elements for CSV output
+void output_vec_to_csv(__m512d x_vec, __m512d y_vec, __m512d z_vec,
+                       __m512d vx_vec, __m512d vy_vec, __m512d vz_vec,
+                       __m512d m_vec, const std::string &filename)
+{
+     // Create directory "golden/" if it does not exist
+     struct stat info;
+     if (stat("golden", &info) != 0)
+     {
+          if (mkdir("golden", 0777) != 0)
+          {
+               throw std::runtime_error("Failed to create directory 'golden'");
+          }
+     }
+
+     // Open the file for writing
+     std::ofstream file("golden/" + filename);
+     if (!file.is_open())
+     {
+          throw std::runtime_error("Failed to open file: " + filename);
+     }
+
+     // Set precision for floating-point numbers
+     file << std::fixed << std::setprecision(12);
+
+     // Extract vector elements into arrays
+     alignas(64) double x[N_BODIES-1], y[N_BODIES-1], z[N_BODIES-1];
+     alignas(64) double vx[N_BODIES-1], vy[N_BODIES-1], vz[N_BODIES-1], m[N_BODIES-1];
+     _mm512_store_pd(x, x_vec);
+     _mm512_store_pd(y, y_vec);
+     _mm512_store_pd(z, z_vec);
+     _mm512_store_pd(vx, vx_vec);
+     _mm512_store_pd(vy, vy_vec);
+     _mm512_store_pd(vz, vz_vec);
+     _mm512_store_pd(m, m_vec);
+
+     // Write data to the CSV file
+     for (int i = 0; i < N_BODIES-1; ++i) {
+         file << x[i] << "," << y[i] << "," << z[i] << ","
+              << vx[i] << "," << vy[i] << "," << vz[i] << "," << m[i] << "\n";
+     }
+
+     file.close();
+}
+
 void gen_golden(double tmax_inyr, double dt, const std::string& filename)
 {
     auto start = std::chrono::high_resolution_clock::now(); // Start timing
@@ -115,7 +161,8 @@ void gen_golden_drift(double dt, const std::string &filename)
      // Constructs a struct called kConsts with the constants
      initialize_constants(solarsystem[0].mass, m_vec);
 
-     // Do drift step
+     // Do drift step, first outputting the input vectors
+     output_vec_to_csv(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, "golden_drift_inputvectors.csv");
      whfast512_drift_step(&x_vec, &y_vec, &z_vec, &vx_vec, &vy_vec, &vz_vec, m_vec, &com, dt);
 
      // Convert back to inertial coordinates and store into solarsystem

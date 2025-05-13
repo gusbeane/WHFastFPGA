@@ -3,6 +3,30 @@
 #include "whfast_constants.h"
 #include <cmath>
 
+// Convert AVX512 vectors to double arrays
+#define CONVERT_PLANETS_AVX512_TO_DOUBLE() \
+do { \
+    _mm512_storeu_pd(x_vec_, *x_vec); \
+    _mm512_storeu_pd(y_vec_, *y_vec); \
+    _mm512_storeu_pd(z_vec_, *z_vec); \
+    _mm512_storeu_pd(vx_vec_, *vx_vec); \
+    _mm512_storeu_pd(vy_vec_, *vy_vec); \
+    _mm512_storeu_pd(vz_vec_, *vz_vec); \
+    _mm512_storeu_pd(m_vec_, m_vec); \
+} while(0)
+
+// Convert double arrays back to AVX512 vectors
+#define CONVERT_PLANETS_DOUBLE_TO_AVX512() \
+do { \
+    *x_vec = _mm512_loadu_pd(x_vec_); \
+    *y_vec = _mm512_loadu_pd(y_vec_); \
+    *z_vec = _mm512_loadu_pd(z_vec_); \
+    *vx_vec = _mm512_loadu_pd(vx_vec_); \
+    *vy_vec = _mm512_loadu_pd(vy_vec_); \
+    *vz_vec = _mm512_loadu_pd(vz_vec_); \
+    m_vec = _mm512_loadu_pd(m_vec_); \
+} while(0)
+
 // Stiefel function for Newton's method, returning Gs1, Gs2, and Gs3
 static void inline mm_stiefel_Gs13_avx512(__m512d * Gs1, __m512d * Gs2, __m512d * Gs3, __m512d beta, __m512d X){
     __m512d X2 = _mm512_mul_pd(X,X); 
@@ -171,51 +195,43 @@ void whfast_kepler_step(double *x_vec,  double *y_vec,  double *z_vec,
         halley_step(&X, beta, r0, eta0, zeta0, dt);
         halley_step(&X, beta, r0, eta0, zeta0, dt);
         newton_step(&X, beta, r0, eta0, zeta0, dt);
-    }
-    
-        // Iterations
-        halley_step(&X, beta, r0, eta0, zeta0, _dt);
-        halley_step(&X, beta, r0, eta0, zeta0, _dt);
-        newton_step(&X, beta, r0, eta0, zeta0, _dt);
         
-        // Final Newton step (note: X not needed after this) 
-        mm_stiefel_Gs13_avx512(&Gs1, &Gs2, &Gs3, beta, X);
-        eta0Gs1zeta0Gs2 = _mm512_mul_pd(eta0, Gs1); 
-        eta0Gs1zeta0Gs2 = _mm512_fmadd_pd(zeta0,Gs2, eta0Gs1zeta0Gs2); 
-        ri = _mm512_add_pd(r0, eta0Gs1zeta0Gs2); 
-        ri = _mm512_div_pd(kConsts->one, ri);
-    
+        stiefel_Gs13(&Gs1, &Gs2, &Gs3, beta, X);
+        eta0Gs1zeta0Gs2 = eta0 * Gs1 + zeta0 * Gs2;
+        ri = 1.0 / (r0 + eta0Gs1zeta0Gs2);
+
         // f and g function
-    
-        __m512d nf = _mm512_mul_pd(kConsts->_M,Gs2); //negative f
-        nf = _mm512_mul_pd(nf,r0i);
+        double nf = kConsts->M0 * Gs2; // negative f
+        nf = nf * r01;
 
-        __m512d g = _mm512_fnmadd_pd(kConsts->_M, Gs3, _dt);
+        double g = -kConsts->M0 * Gs3 + dt;
+        double nfd = kConsts->M0 * Gs1; // negative fd
+        nfd = nfd * r01;
+        nfd = nfd * ri;
 
-        __m512d nfd = _mm512_mul_pd(kConsts->_M, Gs1); // negative fd
-        nfd = _mm512_mul_pd(nfd, r0i);
-        nfd = _mm512_mul_pd(nfd, ri);
+        double ngd = kConsts->M0 * Gs2; // negative gd
+        ngd = ngd * ri;
 
-        __m512d ngd = _mm512_mul_pd(kConsts->_M, Gs2); // negative gd
-        ngd = _mm512_mul_pd(ngd, ri);
+        double nx = -nf*x_vec[i] + x_vec[i];
+        nx = nx + g*vx_vec[i];
 
-        __m512d nx = _mm512_fnmadd_pd(nf, *x_vec, *x_vec);
-        nx = _mm512_fmadd_pd(g, *vx_vec, nx);
-        __m512d ny = _mm512_fnmadd_pd(nf, *y_vec, *y_vec);
-        ny = _mm512_fmadd_pd(g, *vy_vec, ny);
-        __m512d nz = _mm512_fnmadd_pd(nf, *z_vec, *z_vec);
-        nz = _mm512_fmadd_pd(g, *vz_vec, nz);
-    
-        *vx_vec = _mm512_fnmadd_pd(ngd, *vx_vec, *vx_vec);
-        *vx_vec = _mm512_fnmadd_pd(nfd, *x_vec, *vx_vec);
-        *vy_vec = _mm512_fnmadd_pd(ngd, *vy_vec, *vy_vec);
-        *vy_vec = _mm512_fnmadd_pd(nfd, *y_vec, *vy_vec);
-        *vz_vec = _mm512_fnmadd_pd(ngd, *vz_vec, *vz_vec);
-        *vz_vec = _mm512_fnmadd_pd(nfd, *z_vec, *vz_vec);
-    
-        *x_vec = nx;
-        *y_vec = ny;
-        *z_vec = nz;
+        double ny = -nf*y_vec[i] + y_vec[i];
+        ny = ny + g*vy_vec[i];
+
+        double nz = -nf*z_vec[i] + z_vec[i];
+        nz = nz + g*vz_vec[i];
+
+        vx_vec[i] = -ngd*vx_vec[i] + vx_vec[i];
+        vx_vec[i] = -nfd*x_vec[i] + vx_vec[i];
+        vy_vec[i] = -ngd*vy_vec[i] + vy_vec[i];
+        vy_vec[i] = -nfd*y_vec[i] + vy_vec[i];
+        vz_vec[i] = -ngd*vz_vec[i] + vz_vec[i];
+        vz_vec[i] = -nfd*z_vec[i] + vz_vec[i];
+        
+        x_vec[i] = nx;
+        y_vec[i] = ny;
+        z_vec[i] = nz;
+    }
 }
 
 void whfast_com_step(Body *com, double dt)
@@ -231,7 +247,13 @@ void whfast_drift_step(__m512d *x_vec,  __m512d *y_vec,  __m512d *z_vec,
 // We first do the kepler step, then the com step.
 __m512d xload = _mm512_loadu_pd(x_vec);
 
-whfast_kepler_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt);
+double x_vec_[N_PLANETS], y_vec_[N_PLANETS], z_vec_[N_PLANETS];
+double vx_vec_[N_PLANETS], vy_vec_[N_PLANETS], vz_vec_[N_PLANETS];
+double m_vec_[N_PLANETS];
+
+    CONVERT_PLANETS_AVX512_TO_DOUBLE();
+    whfast_kepler_step(x_vec_, y_vec_, z_vec_, vx_vec_, vy_vec_, vz_vec_, m_vec_, dt);
+    CONVERT_PLANETS_DOUBLE_TO_AVX512();
 
 whfast_com_step(com, dt);
 }

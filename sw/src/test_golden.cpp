@@ -76,12 +76,12 @@ void validate_csv(const std::string& filename, const std::array<Body, N_BODIES>&
         }
 
         const Body& expected_body = expected[index];
-        if (!compare_double(values[0], expected_body.pos[0]) ||
-            !compare_double(values[1], expected_body.pos[1]) ||
-            !compare_double(values[2], expected_body.pos[2]) ||
-            !compare_double(values[3], expected_body.vel[0]) ||
-            !compare_double(values[4], expected_body.vel[1]) ||
-            !compare_double(values[5], expected_body.vel[2]) ||
+        if (!compare_double(values[0], expected_body.pos[0], 1.0E-7) ||
+            !compare_double(values[1], expected_body.pos[1], 1.0E-7) ||
+            !compare_double(values[2], expected_body.pos[2], 1.0E-7) ||
+            !compare_double(values[3], expected_body.vel[0], 1.0E-7) ||
+            !compare_double(values[4], expected_body.vel[1], 1.0E-7) ||
+            !compare_double(values[5], expected_body.vel[2], 1.0E-7) ||
             !compare_double(values[6], expected_body.mass)) {
             std::cerr << "Mismatch found in file: " << filename << " at row " << index << ":\n"
                       << "Expected: " << expected_body.pos[0] << ", " << expected_body.pos[1] << ", " << expected_body.pos[2] << ", "

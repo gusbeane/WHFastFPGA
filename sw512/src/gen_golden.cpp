@@ -10,6 +10,7 @@
 #include "whfastfpga.h"
 #include "whfast512.h"
 #include "whfast512_constants.h"
+#include "whfast512_kernel.h" // Ensure this header contains the declaration of whfast512_drift_step
 #include "util.h"
 
 // Initial conditions copied from main.cpp
@@ -93,6 +94,42 @@ void gen_golden(double tmax_inyr, double dt, const std::string& filename)
     std::cout << "Done. Time taken: " << elapsed.count() << " seconds." << std::endl;
 }
 
+// Single drift step
+void gen_golden_drift(double dt, const std::string &filename)
+{
+     auto start = std::chrono::high_resolution_clock::now(); // Start timing
+
+     std::cout << "Generating:" << filename << "... ";
+     // Generate 100 yr integration
+     std::array<Body, N_BODIES> solarsystem = solarsystem_ics;
+     move_to_center_of_mass(solarsystem);
+
+     Body com;
+     // Prepare AVX-512 vectors for bodies 1-8 (ignore solarsystem[0])
+     __m512d x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec;
+
+     inertial_to_democraticheliocentric_posvel(solarsystem, &com, &x_vec, &y_vec, &z_vec,
+                                               &vx_vec, &vy_vec, &vz_vec, &m_vec);
+
+     // Calculate necessary constants
+     // Constructs a struct called kConsts with the constants
+     initialize_constants(solarsystem[0].mass, m_vec);
+
+     // Do drift step
+     whfast512_drift_step(&x_vec, &y_vec, &z_vec, &vx_vec, &vy_vec, &vz_vec, m_vec, &com, dt);
+
+     // Convert back to inertial coordinates and store into solarsystem
+     democraticheliocentric_to_inertial_posvel(solarsystem, &com, x_vec, y_vec, z_vec,
+                                               vx_vec, vy_vec, vz_vec, m_vec);
+
+     // Output mass, position, and velocities of the particles
+     output_to_csv(solarsystem, filename);
+
+     auto end = std::chrono::high_resolution_clock::now(); // End timing
+     std::chrono::duration<double> elapsed = end - start;
+     std::cout << "Done. Time taken: " << elapsed.count() << " seconds." << std::endl;
+}
+
 int main() {
     double dt = 5.0 / 365.25 * 2 * M_PI; // 5 days
     gen_golden(1e2, dt, "solarsystem_100yr.csv");
@@ -100,6 +137,8 @@ int main() {
     gen_golden(1e3, dt, "solarsystem_1kyr.csv");
 
     gen_golden(1e4, dt, "solarsystem_10kyr.csv");
+    
+    gen_golden_drift(dt, "solarsystem_1drift.csv");
 
     std::cout << "All golden vectors made." << std::endl;
     return 0;

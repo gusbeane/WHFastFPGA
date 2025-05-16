@@ -52,6 +52,12 @@ examples/whfastfpga_solar_system/test
 examples/whfastfpga_solar_system/main
 examples/whfastfpga_solar_system/gen_golden
 
-sw*/main
-sw*/test_golden
-sw*/gen_golden
+main
+test_golden
+gen_golden
+
+hw/
+
+gmon.out
+perf.data*
+prof.txt

@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <iomanip>
 #include <chrono> // For timing
+#include <sstream>
 #include "whfastfpga.h"
 #include "whfast.h"
 #include "whfast_constants.h"
@@ -93,6 +94,61 @@ void gen_golden(double tmax_inyr, double dt, const std::string& filename)
     std::cout << "Done. Time taken: " << elapsed.count() << " seconds." << std::endl;
 }
 
+// Remove extern "C" and use regular C++ function declarations
+void stiefel_Gs03(double* Gs0, double* Gs1, double* Gs2, double* Gs3, double beta, double X);
+void stiefel_Gs13(double* Gs1, double* Gs2, double* Gs3, double beta, double X);
+
+// Helper to get hex string of a double
+std::string double_to_hex(double d) {
+    union { double d; uint64_t u; } u;
+    u.d = d;
+    std::ostringstream oss;
+    oss << std::hex << std::setw(16) << std::setfill('0') << u.u;
+    return oss.str();
+}
+
+#define BETA_MIN 0.01
+#define BETA_MAX 3.0
+#define X_MIN 0.001
+#define X_MAX 0.3
+#define N_BETA 100
+#define N_X 100
+
+void gen_stiefel_Gs03_csv(const std::string& filename) {
+    std::ofstream file("golden/" + filename);
+    file << "beta,X,Gs0,Gs1,Gs2,Gs3\n";
+    for (int i = 0; i < N_BETA; ++i) {
+        double beta = BETA_MIN + (BETA_MAX - BETA_MIN) * i / (N_BETA - 1);
+        for (int j = 0; j < N_X; ++j) {
+            double X = X_MIN + (X_MAX - X_MIN) * j / (N_X - 1);
+            double Gs0, Gs1, Gs2, Gs3;
+            stiefel_Gs03(&Gs0, &Gs1, &Gs2, &Gs3, beta, X);
+            file << double_to_hex(beta) << "," << double_to_hex(X) << ","
+                 << double_to_hex(Gs0) << "," << double_to_hex(Gs1) << ","
+                 << double_to_hex(Gs2) << "," << double_to_hex(Gs3) << "\n";
+        }
+    }
+    file.close();
+}
+
+void gen_stiefel_Gs13_csv(const std::string& filename) {
+    std::ofstream file("golden/" + filename);
+    file << "beta,X,Gs1,Gs2,Gs3\n";
+    for (int i = 0; i < N_BETA; ++i) {
+        double beta = BETA_MIN + (BETA_MAX - BETA_MIN) * i / (N_BETA - 1);
+        for (int j = 0; j < N_X; ++j) {
+            double X = X_MIN + (X_MAX - X_MIN) * j / (N_X - 1);
+            double Gs1, Gs2, Gs3;
+            stiefel_Gs13(&Gs1, &Gs2, &Gs3, beta, X);
+            file << double_to_hex(beta) << "," << double_to_hex(X) << ","
+                 << double_to_hex(Gs1) << "," << double_to_hex(Gs2) << ","
+                 << double_to_hex(Gs3) << "\n";
+        }
+    }
+    file.close();
+}
+
+
 int main() {
     double dt = 5.0 / 365.25 * 2 * M_PI; // 5 days
     gen_golden(1e2, dt, "solarsystem_100yr.csv");
@@ -101,6 +157,12 @@ int main() {
 
     gen_golden(1e4, dt, "solarsystem_10kyr.csv");
 
+    // Generate Stiefel function golden CSVs
+    gen_stiefel_Gs03_csv("golden_stiefel_Gs03.csv");
+    gen_stiefel_Gs13_csv("golden_stiefel_Gs13.csv");
+
     std::cout << "All golden vectors made." << std::endl;
+
+    std::cout << "All Stiefel Gs03 and Gs13 samples made." << std::endl;
     return 0;
 }

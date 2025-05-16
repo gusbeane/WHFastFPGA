@@ -27,45 +27,6 @@ do { \
     m_vec = _mm512_loadu_pd(m_vec_); \
 } while(0)
 
-// Stiefel function for Newton's method, returning Gs1, Gs2, and Gs3
-static void inline mm_stiefel_Gs13_avx512(__m512d * Gs1, __m512d * Gs2, __m512d * Gs3, __m512d beta, __m512d X){
-    __m512d X2 = _mm512_mul_pd(X,X); 
-    __m512d z = _mm512_mul_pd(X2,beta); 
-
-    // stumpff_cs. Note: assuming n = 0
-    const int nmax = 19;
-   *Gs3 = kConsts->invfactorial512[nmax]; 
-   *Gs2 = kConsts->invfactorial512[nmax-1]; 
-
-    for(int np=nmax-2;np>=3;np-=2){
-        *Gs3 = _mm512_fnmadd_pd(z, *Gs3, kConsts->invfactorial512[np]);
-        *Gs2 = _mm512_fnmadd_pd(z, *Gs2, kConsts->invfactorial512[np-1]);
-    }
-    *Gs3 = _mm512_mul_pd(*Gs3,X); 
-    *Gs1 = _mm512_fnmadd_pd(z, *Gs3, X);
-    *Gs3 = _mm512_mul_pd(*Gs3,X2); 
-    *Gs2 = _mm512_mul_pd(*Gs2,X2);
-};
-
-// Newton step function for Kepler iteration
-static void inline newton_step(__m512d* X, __m512d beta, __m512d r0, __m512d eta0, __m512d zeta0, __m512d _dt) {
-    __m512d Gs1, Gs2, Gs3;
-    mm_stiefel_Gs13_avx512(&Gs1, &Gs2, &Gs3, beta, *X);
-    
-    __m512d eta0Gs1zeta0Gs2 = _mm512_mul_pd(eta0, Gs1);
-    eta0Gs1zeta0Gs2 = _mm512_fmadd_pd(zeta0, Gs2, eta0Gs1zeta0Gs2);
-    
-    __m512d ri = _mm512_add_pd(r0, eta0Gs1zeta0Gs2);
-    ri = _mm512_div_pd(kConsts->one, ri);
-    
-    *X = _mm512_mul_pd(*X, eta0Gs1zeta0Gs2);
-    *X = _mm512_fnmadd_pd(eta0, Gs2, *X);
-    *X = _mm512_fnmadd_pd(zeta0, Gs3, *X);
-    *X = _mm512_add_pd(_dt, *X); // Using dt parameter
-    *X = _mm512_mul_pd(ri, *X);
-}
-
-
 // Scalar Stiefel function for Halley's method, returning Gs0, Gs1, Gs2, and Gs3
 static inline void stiefel_Gs03(double* Gs0, double* Gs1, double* Gs2, double* Gs3, double beta, double X) {
     double X2 = X * X;

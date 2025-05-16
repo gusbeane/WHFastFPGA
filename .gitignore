@@ -1,13 +1,92 @@
+# ----------------------------------------
+# Generic build artifacts and objects
+# ----------------------------------------
 *.o
-.vscode
-compile_commands.json
+*.d
+*.so
+*.a
+*.out
 
+# ----------------------------------------
+# Executables
+# ----------------------------------------
 main
 test_golden
 gen_golden
 
-hw/
-
+# ----------------------------------------
+# Profiling and performance data
+# ----------------------------------------
 gmon.out
 perf.data*
 prof.txt
+
+# ----------------------------------------
+# Build directories
+# ----------------------------------------
+hw/build/
+hw/export/
+sw/build/
+sw512/build/
+
+# ----------------------------------------
+# Vitis / Vivado HLS artifacts
+# ----------------------------------------
+# HLS/Vitis session, config & report files
+hw/.analyzer_session.json
+hw/**/hls_config.cfg
+hw/**/*.hlscompile_summary
+hw/**/*.hlsrun_csim_summary
+hw/**/reports/
+hw/**/.db/
+hw/**/vitis-comp.json
+
+# HLS run and implementation folders
+hw/**/hls/
+hw/**/csim/
+hw/**/syn/
+hw/**/impl/
+
+# Xilinx tool‐generated project files
+hw/_ide/
+.vitisWorkspace.json
+.ip_user_files/
+.Xil/
+.cache/
+
+# Vivado project/data files
+*.xpr
+*.xsa
+*.jou
+*.rpt
+*.pb
+
+# ----------------------------------------
+# IDE & compilation database
+# ----------------------------------------
+.vscode/
+compile_commands.json
+
+# ----------------------------------------
+# Logs
+# ----------------------------------------
+*.log
+hw/logs/
+sw/logs/
+hw/**/logs/
+
+# ----------------------------------------
+# Lock files
+# ----------------------------------------
+*.lock
+
+# ----------------------------------------
+# FPGA bitstreams and binaries
+# ----------------------------------------
+*.bin
+*.pdi
+
+# ----------------------------------------
+# Miscellaneous
+# ----------------------------------------
+*.wsdata

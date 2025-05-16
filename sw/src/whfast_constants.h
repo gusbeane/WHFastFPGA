@@ -22,3 +22,8 @@ extern const Constants* kConsts;
 
 // Call this once with the desired M0/m_vec to build kConsts.
 void initialize_constants(double M0, __m512d m_vec);
+
+#ifdef PRINT_UTILITY
+extern double beta_min, beta_max;
+extern double X_min, X_max;
+#endif // PRINT_UTILITY

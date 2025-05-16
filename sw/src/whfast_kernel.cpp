@@ -2,6 +2,7 @@
 #include "whfast_kernel.h"
 #include "whfast_constants.h"
 #include <cmath>
+#include <limits>
 
 // Convert AVX512 vectors to double arrays
 #define CONVERT_PLANETS_AVX512_TO_DOUBLE() \
@@ -28,7 +29,14 @@ do { \
 } while(0)
 
 // Scalar Stiefel function for Halley's method, returning Gs0, Gs1, Gs2, and Gs3
-static inline void stiefel_Gs03(double* Gs0, double* Gs1, double* Gs2, double* Gs3, double beta, double X) {
+inline void stiefel_Gs03(double* Gs0, double* Gs1, double* Gs2, double* Gs3, double beta, double X) {
+#ifdef PRINT_UTILITY
+    if (beta < beta_min) beta_min = beta;
+    if (beta > beta_max) beta_max = beta;
+    if (X < X_min) X_min = X;
+    if (X > X_max) X_max = X;
+#endif // PRINT_UTILITY
+
     double X2 = X * X;
     double z = X2 * beta;
     // Use a truncated Taylor series for the Stumpff functions
@@ -77,7 +85,14 @@ static inline void halley_step(double* X, double beta, double r0, double eta0, d
 }
 
 // Scalar Stiefel function for Newton's method, returning Gs1, Gs2, and Gs3
-static inline void stiefel_Gs13(double* Gs1, double* Gs2, double* Gs3, double beta, double X) {
+inline void stiefel_Gs13(double* Gs1, double* Gs2, double* Gs3, double beta, double X) {
+    #ifdef PRINT_UTILITY
+    if (beta < beta_min) beta_min = beta;
+    if (beta > beta_max) beta_max = beta;
+    if (X < X_min) X_min = X;
+    if (X > X_max) X_max = X;
+    #endif // PRINT_UTILITY
+
     double X2 = X * X;
     double z = X2 * beta;
     // Use a truncated Taylor series for the Stumpff functions

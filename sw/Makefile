@@ -55,6 +55,11 @@ gengold: $(GENGOLD_TARGET)
 $(GENGOLD_TARGET): $(GENGOLD_OBJS)
 	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^
 
+# Add print target to build main with -DPRINT_UTILITY
+.PHONY: print
+print: CFLAGS += -DPRINT_UTILITY
+print: $(TARGET)
+
 # Ensure build/ exists, then compile any src/foo.cpp → build/foo.o
 $(OBJDIR):
 	mkdir -p $@

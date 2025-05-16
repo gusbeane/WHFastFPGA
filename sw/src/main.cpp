@@ -46,7 +46,7 @@ int main(int argc, char **argv)
     Body com;
     
 
-    double tmax = 2.0 * M_PI * 1e2; // 100 yr
+    double tmax = 2.0 * M_PI * 1e4; // 10 kyr
     double dt = 5.0 / 365.25 * 2 * M_PI; // 5 days
     long Nint = static_cast<long>(tmax / dt);
     whfast_integrate(solarsystem, &com, dt, Nint);

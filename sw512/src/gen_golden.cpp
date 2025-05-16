@@ -74,7 +74,7 @@ void output_to_csv(const std::array<Body, N_BODIES>& solarsystem, const std::str
 }
 
 // Rewrite to accept AVX-512 vectors and extract elements for CSV output
-void output_vec_to_csv(__m512d x_vec, __m512d y_vec, __m512d z_vec,
+void output_vec_to_csv(double M0, double dt, __m512d x_vec, __m512d y_vec, __m512d z_vec,
                        __m512d vx_vec, __m512d vy_vec, __m512d vz_vec,
                        __m512d m_vec, const std::string &filename)
 {
@@ -96,7 +96,7 @@ void output_vec_to_csv(__m512d x_vec, __m512d y_vec, __m512d z_vec,
      }
 
      // Set precision for floating-point numbers
-     file << std::fixed << std::setprecision(12);
+     file << std::fixed << std::setprecision(20);
 
      // Extract vector elements into arrays
      alignas(64) double x[N_BODIES-1], y[N_BODIES-1], z[N_BODIES-1];
@@ -110,6 +110,7 @@ void output_vec_to_csv(__m512d x_vec, __m512d y_vec, __m512d z_vec,
      _mm512_store_pd(m, m_vec);
 
      // Write data to the CSV file
+     file << M0 << "," << dt << "\n"; // Write M0 as the first line
      for (int i = 0; i < N_BODIES-1; ++i) {
          file << x[i] << "," << y[i] << "," << z[i] << ","
               << vx[i] << "," << vy[i] << "," << vz[i] << "," << m[i] << "\n";
@@ -162,8 +163,11 @@ void gen_golden_drift(double dt, const std::string &filename)
      initialize_constants(solarsystem[0].mass, m_vec);
 
      // Do drift step, first outputting the input vectors
-     output_vec_to_csv(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, "golden_drift_inputvectors.csv");
+     output_vec_to_csv(kConsts->M0, dt, x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, "golden_drift_inputvectors.csv");
+
      whfast512_drift_step(&x_vec, &y_vec, &z_vec, &vx_vec, &vy_vec, &vz_vec, m_vec, &com, dt);
+     
+     output_vec_to_csv(kConsts->M0, dt, x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, "golden_drift_outputvectors.csv");
 
      // Convert back to inertial coordinates and store into solarsystem
      democraticheliocentric_to_inertial_posvel(solarsystem, &com, x_vec, y_vec, z_vec,
@@ -177,6 +181,53 @@ void gen_golden_drift(double dt, const std::string &filename)
      std::cout << "Done. Time taken: " << elapsed.count() << " seconds." << std::endl;
 }
 
+// Single drift step
+void print_kepler_timing(double dt)
+{
+
+     // Generate 100 yr integration
+     std::array<Body, N_BODIES> solarsystem = solarsystem_ics;
+     move_to_center_of_mass(solarsystem);
+
+     Body com;
+     // Prepare AVX-512 vectors for bodies 1-8 (ignore solarsystem[0])
+     __m512d x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec;
+
+     inertial_to_democraticheliocentric_posvel(solarsystem, &com, &x_vec, &y_vec, &z_vec,
+                                               &vx_vec, &vy_vec, &vz_vec, &m_vec);
+
+     // Calculate necessary constants
+     // Constructs a struct called kConsts with the constants
+     initialize_constants(solarsystem[0].mass, m_vec);
+
+     auto start = std::chrono::high_resolution_clock::now(); // Start timing
+     for(int i=0; i<10000000; i++)
+          whfast512_kepler_step(&x_vec, &y_vec, &z_vec, &vx_vec, &vy_vec, &vz_vec, m_vec, dt);
+     auto end = std::chrono::high_resolution_clock::now(); // End timing
+     std::chrono::duration<double> elapsed = end - start;
+
+     std::cout << "Average time per kepler step taken: " << 1e9*elapsed.count()/10000000.0 << " nanoseconds." << std::endl;
+
+     // Now get timing for Stiefel function
+     double X = 0.0925188;
+     double beta = 2.58286;
+
+     __m512d X_ = _mm512_set1_pd(X);
+     __m512d beta_ = _mm512_set1_pd(beta);
+
+     __m512d Gs1;
+     __m512d Gs2;
+     __m512d Gs3;
+
+     start = std::chrono::high_resolution_clock::now(); // Start timing
+     for(int i=0; i<10000000; i++)
+          mm_stiefel_Gs13_avx512(&Gs1, &Gs2, &Gs3, beta_, X_);     
+     end = std::chrono::high_resolution_clock::now(); // End timing
+     elapsed = end - start;
+
+     std::cout << "Average time per stiefel Gs13 call taken: " << 1e9*elapsed.count()/10000000.0 << " nanoseconds." << std::endl;
+}
+
 int main() {
     double dt = 5.0 / 365.25 * 2 * M_PI; // 5 days
     gen_golden(1e2, dt, "solarsystem_100yr.csv");
@@ -186,6 +237,8 @@ int main() {
     gen_golden(1e4, dt, "solarsystem_10kyr.csv");
     
     gen_golden_drift(dt, "solarsystem_1drift.csv");
+
+    print_kepler_timing(dt);
 
     std::cout << "All golden vectors made." << std::endl;
     return 0;

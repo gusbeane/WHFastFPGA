@@ -234,13 +234,6 @@ double m_vec_[N_PLANETS];
 whfast_com_step(com, dt);
 }
 
-// void whfast_jump_step(__m512d *x_vec,  __m512d *y_vec,  __m512d *z_vec,
-//     __m512d *vx_vec, __m512d *vy_vec, __m512d *vz_vec,
-//     __m512d m_vec, double dt)
-// {
-
-// }
-
 // Performs one complete jump step
 void whfast_jump_step(__m512d *x_vec, __m512d *y_vec, __m512d *z_vec,
                          __m512d *vx_vec, __m512d *vy_vec, __m512d *vz_vec,

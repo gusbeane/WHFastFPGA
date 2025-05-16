@@ -1,6 +1,8 @@
 # Compiler and flags
 CC        := g++
-CFLAGS    := -Wall -Wextra -std=c++11 -march=native -g
+#CFLAGS    := -Wall -Wextra -std=c++11 -march=native -g -Og -pg -finstrument-functions
+CFLAGS    := -Wall -Wextra -std=c++11 -march=native -g -Og -pg
+#CFLAGS    := -Wall -Wextra -std=c++11 -march=native -O3
 SRCDIR    := src
 OBJDIR    := build
 

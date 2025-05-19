@@ -230,6 +230,111 @@ void test_stiefel(StiefelMode mode) {
     }
 }
 
+// Enum for Newton/Halley mode
+enum NewtonHalleyMode { NEWTON, HALLEY };
+
+// Struct for golden data
+struct NewtonHalleyGolden {
+    double X, beta, r0, eta0, zeta0, Xout;
+};
+
+// Read golden vectors for Newton or Halley
+struct NewtonHalleyGoldenSet {
+    double dt;
+    std::vector<NewtonHalleyGolden> data;
+};
+
+NewtonHalleyGoldenSet read_newton_halley_golden(NewtonHalleyMode mode) {
+    NewtonHalleyGoldenSet result;
+    std::string fname = (mode == NEWTON) ? "golden_newton_step.csv" : "golden_halley_step.csv";
+    std::ifstream file(fname);
+    if (!file.is_open()) {
+        std::cerr << "Error opening " << fname << std::endl;
+        std::exit(1);
+    }
+    std::string line;
+    // Skip header
+    if (!std::getline(file, line)) {
+        std::cerr << "Error reading header from " << fname << std::endl;
+        std::exit(1);
+    }
+    // Read dt line (format: dt=hexnumber)
+    if (!std::getline(file, line)) {
+        std::cerr << "Error reading dt from " << fname << std::endl;
+        std::exit(1);
+    }
+    size_t eqpos = line.find('=');
+    if (eqpos == std::string::npos) {
+        std::cerr << "Malformed dt line in " << fname << std::endl;
+        std::exit(1);
+    }
+    std::string dt_hex = line.substr(eqpos + 1);
+    result.dt = hex_to_double(dt_hex);
+    // Read data lines
+    while (std::getline(file, line)) {
+        std::stringstream ss(line);
+        std::string X_hex, beta_hex, r0_hex, eta0_hex, zeta0_hex, Xout_hex;
+        if (!std::getline(ss, X_hex, ',')) break;
+        if (!std::getline(ss, beta_hex, ',')) break;
+        if (!std::getline(ss, r0_hex, ',')) break;
+        if (!std::getline(ss, eta0_hex, ',')) break;
+        if (!std::getline(ss, zeta0_hex, ',')) break;
+        if (!std::getline(ss, Xout_hex, ',')) break;
+        NewtonHalleyGolden entry;
+        entry.X = hex_to_double(X_hex);
+        entry.beta = hex_to_double(beta_hex);
+        entry.r0 = hex_to_double(r0_hex);
+        entry.eta0 = hex_to_double(eta0_hex);
+        entry.zeta0 = hex_to_double(zeta0_hex);
+        entry.Xout = hex_to_double(Xout_hex);
+        result.data.push_back(entry);
+    }
+    file.close();
+    return result;
+}
+
+// Unified test function for Newton/Halley
+void test_newton_halley(NewtonHalleyMode mode) {
+    const char *name = (mode == NEWTON) ? "test_newton_step" : "test_halley_step";
+    auto golden_set = read_newton_halley_golden(mode);
+    double dt = golden_set.dt;
+    int fail = 0, total = 0;
+    unsigned long max_diff = 0;
+    for (const auto& entry : golden_set.data) {
+        double Xout = entry.X;
+        if (mode == NEWTON) {
+            Xout = newton_step(entry.X, entry.beta, entry.r0, entry.eta0, entry.zeta0, dt);
+        } else {
+            halley_step(&Xout, entry.beta, entry.r0, entry.eta0, entry.zeta0, dt);
+        }
+        uint64_t bits, golden_bits;
+        std::memcpy(&bits, &Xout, sizeof(double));
+        std::memcpy(&golden_bits, &entry.Xout, sizeof(double));
+        auto ulp_diff = [](uint64_t a, uint64_t b) -> uint64_t {
+            return (a > b) ? (a - b) : (b - a);
+        };
+        unsigned long diff = ulp_diff(bits, golden_bits);
+        max_diff = std::max(max_diff, diff);
+        if (diff > MAX_GS13) {
+            std::cout << std::setprecision(17);
+            std::cout << "Mismatch at line " << (total+3) << ":\n";
+            std::cout << "  X=" << entry.X << ", beta=" << entry.beta << ", r0=" << entry.r0 << ", eta0=" << entry.eta0 << ", zeta0=" << entry.zeta0 << ", dt=" << dt << std::endl;
+            std::cout << "  Xout: computed=" << Xout << " (0x" << std::hex << bits << std::dec << ")"
+                      << ", golden=" << entry.Xout << " (0x" << std::hex << golden_bits << std::dec << ")"
+                      << " | ulp_diff=" << diff << std::endl;
+            fail++;
+        }
+        total++;
+    }
+    if (fail) {
+        std::cout << name << " failed with " << fail << " mismatches out of " << total << "." << std::endl;
+        std::cout << "Maximum ULP difference: " << max_diff << std::endl;
+        std::exit(fail);
+    } else {
+        std::cout << name << " passed! (" << total << " cases, max_diff=" << max_diff << ")" << std::endl;
+    }
+}
+
 int main()
 {
     // First read in the initial conditions
@@ -249,6 +354,9 @@ int main()
 
     test_stiefel(GS13);
     test_stiefel(GS03);
+
+    test_newton_halley(NEWTON);
+    test_newton_halley(HALLEY);
 
     // Now run kepler step
 }

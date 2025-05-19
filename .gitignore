@@ -48,7 +48,7 @@ hw/**/syn/
 hw/**/impl/
 
 # Xilinx tool‐generated project files
-hw/_ide/
+**/_ide/
 .vitisWorkspace.json
 .ip_user_files/
 .Xil/

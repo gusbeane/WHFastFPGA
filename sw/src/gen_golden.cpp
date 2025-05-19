@@ -155,6 +155,7 @@ void gen_kepler_step_csv(const std::string &filename)
     // Print initial conditions to file
     file << "x,y,z,vx,vy,vz\n";
     file << "dt=" << double_to_hex(dt) << "\n";
+    file << "M0=" << double_to_hex(kConsts->M0) << "\n";
     for (int i = 0; i < N_PLANETS; ++i)
     {
         file << double_to_hex(x_vec_[i]) << ","

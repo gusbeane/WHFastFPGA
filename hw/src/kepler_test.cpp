@@ -301,11 +301,11 @@ void test_newton_halley(NewtonHalleyMode mode) {
     int fail = 0, total = 0;
     unsigned long max_diff = 0;
     for (const auto& entry : golden_set.data) {
-        double Xout = entry.X;
+        double Xout;
         if (mode == NEWTON) {
             Xout = newton_step(entry.X, entry.beta, entry.r0, entry.eta0, entry.zeta0, dt);
         } else {
-            halley_step(&Xout, entry.beta, entry.r0, entry.eta0, entry.zeta0, dt);
+            Xout = halley_step(entry.X, entry.beta, entry.r0, entry.eta0, entry.zeta0, dt);
         }
         uint64_t bits, golden_bits;
         std::memcpy(&bits, &Xout, sizeof(double));

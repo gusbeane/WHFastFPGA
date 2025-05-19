@@ -148,6 +148,65 @@ void gen_stiefel_Gs13_csv(const std::string& filename) {
     file.close();
 }
 
+#define N_NEWTON_HALLEY 8
+#define R0_MIN 0.2
+#define R0_MAX 50.0
+#define ETA0_MIN -0.25
+#define ETA0_MAX 0.25
+#define ZETA0_MIN -0.25
+#define ZETA0_MAX 0.25
+
+// Generates a CSV of input vectors and outputs for newton_step and halley_step
+void gen_newton_halley_input_csv(const std::string& filename_newton, const std::string& filename_halley) {
+    std::ofstream file_newton("golden/" + filename_newton);
+    std::ofstream file_halley("golden/" + filename_halley);
+    
+    file_newton << "X,beta,r0,eta0,zeta0,Xout\n";
+    file_halley << "X,beta,r0,eta0,zeta0,Xout\n";
+
+    const double dt = 5.0 / 365.25 * 2 * M_PI;
+    file_newton << "dt=" << double_to_hex(dt) << "\n";
+    file_halley << "dt=" << double_to_hex(dt) << "\n";
+
+    for (int i = 0; i < N_NEWTON_HALLEY; ++i) {
+        double r0 = R0_MIN + (R0_MAX - R0_MIN) * i / (N_NEWTON_HALLEY - 1);
+        for (int j = 0; j < N_NEWTON_HALLEY; ++j) {
+            double eta0 = ETA0_MIN + (ETA0_MAX - ETA0_MIN) * j / (N_NEWTON_HALLEY - 1);
+            for (int k = 0; k < N_NEWTON_HALLEY; ++k) {
+                double zeta0 = ZETA0_MIN + (ZETA0_MAX - ZETA0_MIN) * k / (N_NEWTON_HALLEY - 1);
+                for (int l = 0; l < N_NEWTON_HALLEY; ++l) {
+                    double beta = BETA_MIN + (BETA_MAX - BETA_MIN) * l / (N_NEWTON_HALLEY - 1);
+                    for (int m = 0; m < N_NEWTON_HALLEY; ++m) {
+                        double X = X_MIN + (X_MAX - X_MIN) * m / (N_NEWTON_HALLEY - 1);
+                        double X_newton = X;
+                        double X_halley = X;
+                        // Call the step functions
+                        extern void newton_step(double*, double, double, double, double, double);
+                        extern void halley_step(double*, double, double, double, double, double);
+                        
+                        newton_step(&X_newton, beta, r0, eta0, zeta0, dt);
+                        file_newton << double_to_hex(X) << ","
+                             << double_to_hex(beta) << ","
+                             << double_to_hex(r0) << ","
+                             << double_to_hex(eta0) << ","
+                             << double_to_hex(zeta0) << ","
+                             << double_to_hex(X_newton) << "\n";
+                        
+                        halley_step(&X_halley, beta, r0, eta0, zeta0, dt);
+                        file_halley << double_to_hex(X) << ","
+                             << double_to_hex(beta) << ","
+                             << double_to_hex(r0) << ","
+                             << double_to_hex(eta0) << ","
+                             << double_to_hex(zeta0) << ","
+                             << double_to_hex(X_halley) << "\n";
+                    }
+                }
+            }
+        }
+    }
+    file_newton.close();
+    file_halley.close();
+}
 
 int main() {
     double dt = 5.0 / 365.25 * 2 * M_PI; // 5 days
@@ -160,6 +219,9 @@ int main() {
     // Generate Stiefel function golden CSVs
     gen_stiefel_Gs03_csv("golden_stiefel_Gs03.csv");
     gen_stiefel_Gs13_csv("golden_stiefel_Gs13.csv");
+
+    // Generate Newton-Halley input CSV
+    gen_newton_halley_input_csv("golden_newton_step.csv", "golden_halley_step.csv");
 
     std::cout << "All golden vectors made." << std::endl;
 

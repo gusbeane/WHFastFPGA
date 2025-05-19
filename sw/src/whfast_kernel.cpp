@@ -70,7 +70,16 @@ inline void stiefel_Gs03(double* Gs0, double* Gs1, double* Gs2, double* Gs3, dou
 }
 
 // Scalar Halley step function for Kepler iteration
-static inline void halley_step(double* X, double beta, double r0, double eta0, double zeta0, double dt) {
+inline void halley_step(double* X, double beta, double r0, double eta0, double zeta0, double dt) {
+#ifdef PRINT_UTILITY
+    if (r0 < halley_r0_min) halley_r0_min = r0;
+    if (r0 > halley_r0_max) halley_r0_max = r0;
+    if (eta0 < halley_eta0_min) halley_eta0_min = eta0;
+    if (eta0 > halley_eta0_max) halley_eta0_max = eta0;
+    if (zeta0 < halley_zeta0_min) halley_zeta0_min = zeta0;
+    if (zeta0 > halley_zeta0_max) halley_zeta0_max = zeta0;
+#endif // PRINT_UTILITY
+
     double Gs0, Gs1, Gs2, Gs3;
     stiefel_Gs03(&Gs0, &Gs1, &Gs2, &Gs3, beta, *X);
     double f = r0 * (*X) - dt;
@@ -133,7 +142,16 @@ inline void stiefel_Gs13(double* Gs1, double* Gs2, double* Gs3, double beta, dou
 }
 
 // Scalar Newton step function for Kepler iteration
-static inline void newton_step(double* X, double beta, double r0, double eta0, double zeta0, double dt) {
+inline void newton_step(double* X, double beta, double r0, double eta0, double zeta0, double dt) {
+#ifdef PRINT_UTILITY
+    if (r0 < newton_r0_min) newton_r0_min = r0;
+    if (r0 > newton_r0_max) newton_r0_max = r0;
+    if (eta0 < newton_eta0_min) newton_eta0_min = eta0;
+    if (eta0 > newton_eta0_max) newton_eta0_max = eta0;
+    if (zeta0 < newton_zeta0_min) newton_zeta0_min = zeta0;
+    if (zeta0 > newton_zeta0_max) newton_zeta0_max = zeta0;
+#endif // PRINT_UTILITY
+
     double Gs1, Gs2, Gs3;
     stiefel_Gs13(&Gs1, &Gs2, &Gs3, beta, *X);
     double eta0Gs1zeta0Gs2 = eta0 * Gs1 + zeta0 * Gs2;

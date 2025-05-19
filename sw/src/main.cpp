@@ -10,6 +10,12 @@
 #include <limits>
 
 double beta_min, beta_max, X_min, X_max;
+double halley_r0_min, halley_r0_max;
+double halley_eta0_min, halley_eta0_max;
+double halley_zeta0_min, halley_zeta0_max;
+double newton_r0_min, newton_r0_max;
+double newton_eta0_min, newton_eta0_max;
+double newton_zeta0_min, newton_zeta0_max;
 
 constexpr std::array<Body, N_BODIES> solarsystem_ics = {
     Body{{-0.008816286905115728, -0.0010954664916791675, 0.0002143249385447027},
@@ -52,6 +58,20 @@ int main(int argc, char **argv)
       beta_max = std::numeric_limits<double>::lowest();
       X_min = std::numeric_limits<double>::max();
       X_max = std::numeric_limits<double>::lowest();
+
+      halley_r0_min = std::numeric_limits<double>::max();
+      halley_r0_max = std::numeric_limits<double>::lowest();
+      halley_eta0_min = std::numeric_limits<double>::max();
+      halley_eta0_max = std::numeric_limits<double>::lowest();
+      halley_zeta0_min = std::numeric_limits<double>::max();
+      halley_zeta0_max = std::numeric_limits<double>::lowest();
+
+      newton_r0_min = std::numeric_limits<double>::max();
+      newton_r0_max = std::numeric_limits<double>::lowest();
+      newton_eta0_min = std::numeric_limits<double>::max();
+      newton_eta0_max = std::numeric_limits<double>::lowest();
+      newton_zeta0_min = std::numeric_limits<double>::max();
+      newton_zeta0_max = std::numeric_limits<double>::lowest();
 #endif // PRINT_UTILITY
 
       double tmax = 2.0 * M_PI * 1e4;      // 10 kyr
@@ -62,5 +82,13 @@ int main(int argc, char **argv)
 #ifdef PRINT_UTILITY
       std::cout << "beta_min: " << beta_min << ", beta_max: " << beta_max << std::endl;
       std::cout << "X_min: " << X_min << ", X_max: " << X_max << std::endl;
+
+      std::cout << "halley_r0_min: " << halley_r0_min << ", halley_r0_max: " << halley_r0_max << std::endl;
+      std::cout << "halley_eta0_min: " << halley_eta0_min << ", halley_eta0_max: " << halley_eta0_max << std::endl;
+      std::cout << "halley_zeta0_min: " << halley_zeta0_min << ", halley_zeta0_max: " << halley_zeta0_max << std::endl;
+
+      std::cout << "newton_r0_min: " << newton_r0_min << ", newton_r0_max: " << newton_r0_max << std::endl;
+      std::cout << "newton_eta0_min: " << newton_eta0_min << ", newton_eta0_max: " << newton_eta0_max << std::endl;
+      std::cout << "newton_zeta0_min: " << newton_zeta0_min << ", newton_zeta0_max: " << newton_zeta0_max << std::endl;
 #endif // PRINT_UTILITY
 }

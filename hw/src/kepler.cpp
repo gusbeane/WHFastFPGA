@@ -41,23 +41,9 @@ void stiefel_Gs03(real_t* Gs0, real_t* Gs1, real_t* Gs2, real_t* Gs3, real_t bet
     *Gs2 = (*Gs2) * X2;
 }
 
-// Scalar Halley step function for Kepler iteration
-inline void halley_step(real_t* X, real_t beta, real_t r0, real_t eta0, real_t zeta0, real_t dt) {
-    real_t Gs0, Gs1, Gs2, Gs3;
-    stiefel_Gs03(&Gs0, &Gs1, &Gs2, &Gs3, beta, *X);
-    real_t f = r0 * (*X) - dt;
-    f += eta0 * Gs2;
-    f += zeta0 * Gs3;
-    real_t fp = r0 + eta0 * Gs1 + zeta0 * Gs2;
-    real_t fpp = eta0 * Gs0 + zeta0 * Gs1;
-    real_t denom = fp * fp * R(16.0) - R(20.0) * f * fpp;
-    denom = sqrt(denom);
-    denom = fp + denom;
-    *X = ((*X) * denom - R(5.0) * f) / denom;
-}
-
 // Scalar Stiefel function for Newton's method, returning Gs1, Gs2, and Gs3
 void stiefel_Gs13(real_t* Gs1, real_t* Gs2, real_t* Gs3, real_t beta, real_t X) {
+#pragma HLS inline
 // Change #1
 // II 193 BRAM 2 DSP 19 FF 3642 LUT 3471
 // II 124 BRAM 0 DSP 19 FF 2870 LUT 2217
@@ -65,10 +51,10 @@ void stiefel_Gs13(real_t* Gs1, real_t* Gs2, real_t* Gs3, real_t beta, real_t X) 
 #pragma HLS interface mode = ap_none register port = Gs2
 #pragma HLS interface mode = ap_none register port = Gs3
 
-// Change #2
+// Change #2 (disabled due to inlining)
 // II 124 BRAM 0 DSP 19  FF 2870  LUT 2217
 // II 1   BRAM 0 DSP 227 FF 19815 LUT 15407
-#pragma HLS pipeline II=1
+// #pragma HLS pipeline II=1
 
     real_t X2 = X * X;
     real_t z = X2 * beta;
@@ -199,14 +185,38 @@ void stiefel_Gs13(real_t* Gs1, real_t* Gs2, real_t* Gs3, real_t beta, real_t X) 
 //     *Gs2 = G2 * X2;       // one multiply
 // }
 
+// Scalar Halley step function for Kepler iteration
+void halley_step(real_t* X, real_t beta, real_t r0, real_t eta0, real_t zeta0, real_t dt) {
+    real_t Gs0, Gs1, Gs2, Gs3;
+    stiefel_Gs03(&Gs0, &Gs1, &Gs2, &Gs3, beta, *X);
+    real_t f = r0 * (*X) - dt;
+    f += eta0 * Gs2;
+    f += zeta0 * Gs3;
+    real_t fp = r0 + eta0 * Gs1 + zeta0 * Gs2;
+    real_t fpp = eta0 * Gs0 + zeta0 * Gs1;
+    real_t denom = fp * fp * R(16.0) - R(20.0) * f * fpp;
+    denom = sqrt(denom);
+    denom = fp + denom;
+    *X = ((*X) * denom - R(5.0) * f) / denom;
+}
+
 // Scalar Newton step function for Kepler iteration
-static inline void newton_step(real_t* X, real_t beta, real_t r0, real_t eta0, real_t zeta0, real_t dt) {
-    real_t Gs1, Gs2, Gs3;
-    stiefel_Gs13(&Gs1, &Gs2, &Gs3, beta, *X);
-    real_t eta0Gs1zeta0Gs2 = eta0 * Gs1 + zeta0 * Gs2;
-    real_t ri = R(1.0) / (r0 + eta0Gs1zeta0Gs2);
-    *X = (*X) * eta0Gs1zeta0Gs2 - eta0 * Gs2 - zeta0 * Gs3 + dt;
-    *X = ri * (*X);
+real_t newton_step(real_t X, real_t beta, real_t r0, real_t eta0, real_t zeta0, real_t dt) {
+    #pragma HLS pipeline II=1
+
+    // real_t Xreg = Xin;
+        real_t Gs1, Gs2, Gs3;
+        stiefel_Gs13(&Gs1, &Gs2, &Gs3, beta, X);
+        real_t eta0Gs1zeta0Gs2 = eta0 * Gs1 + zeta0 * Gs2;
+        real_t denom_in = r0 + eta0Gs1zeta0Gs2;
+        real_t numer_in = R(1.0);
+
+        real_t ri = numer_in / denom_in;
+        X = X * eta0Gs1zeta0Gs2 - eta0 * Gs2 - zeta0 * Gs3 + dt;
+        X = ri * X;
+
+    return X;
+    
 }
 
 void kepler_step(real_t *x_vec, real_t *y_vec, real_t *z_vec,
@@ -238,7 +248,7 @@ void kepler_step(real_t *x_vec, real_t *y_vec, real_t *z_vec,
         // Iterations
         halley_step(&X, beta, r0, eta0, zeta0, dt);
         halley_step(&X, beta, r0, eta0, zeta0, dt);
-        newton_step(&X, beta, r0, eta0, zeta0, dt);
+        X = newton_step(X, beta, r0, eta0, zeta0, dt);
 
         stiefel_Gs13(&Gs1, &Gs2, &Gs3, beta, X);
         eta0Gs1zeta0Gs2 = eta0 * Gs1 + zeta0 * Gs2;

@@ -10,7 +10,7 @@
 #include <cstdint>
 
 // max number of bit errors in ULP
-#define MAX_GS13 1
+#define MAX_ULP_DIFF 0
 
 // Helper to convert hex string to double
 static double hex_to_double(const std::string& hexstr) {
@@ -91,7 +91,7 @@ void test_stiefel(StiefelMode mode) {
         };
         bool fail_any = false;
         for (int i = 0; i < ((mode == GS03) ? 4 : 3); ++i) {
-            if (ulp_diff(bits[i], golden_bits[i]) > MAX_GS13) fail_any = true;
+            if (ulp_diff(bits[i], golden_bits[i]) > MAX_ULP_DIFF) fail_any = true;
             max_diff = std::max(max_diff, ulp_diff(bits[i], golden_bits[i]));
         }
         if (fail_any) {
@@ -201,7 +201,7 @@ void test_newton_halley(NewtonHalleyMode mode) {
         };
         unsigned long diff = ulp_diff(bits, golden_bits);
         max_diff = std::max(max_diff, diff);
-        if (diff > MAX_GS13) {
+        if (diff > MAX_ULP_DIFF) {
             std::cout << std::setprecision(17);
             std::cout << "Mismatch at line " << (total+3) << ":\n";
             std::cout << "  X=" << entry.X << ", beta=" << entry.beta << ", r0=" << entry.r0 << ", eta0=" << entry.eta0 << ", zeta0=" << entry.zeta0 << ", dt=" << dt << std::endl;
@@ -342,7 +342,7 @@ void test_kepler_step() {
             };
             unsigned long diff = ulp_diff(bits, golden_bits);
             max_diff = std::max(max_diff, diff);
-            if (diff > MAX_GS13) {
+            if (diff > MAX_ULP_DIFF) {
                 std::cout << std::setprecision(17);
                 std::cout << "Mismatch for planet " << i << ", " << vec_names[v] << ":\n";
                 std::cout << "  computed=" << out_vecs[v][i] << " (0x" << std::hex << bits << std::dec << ")"
@@ -417,8 +417,8 @@ JumpGoldenSet read_jump_golden() {
             std::exit(1);
         }
         std::stringstream ss(line);
-        std::string fields[6];
-        for (int j = 0; j < 6; ++j) {
+        std::string fields[7];
+        for (int j = 0; j < 7; ++j) {
             if (!std::getline(ss, fields[j], ',')) {
                 std::cerr << "Malformed planet line in " << fname << " at planet " << i << std::endl;
                 std::exit(1);
@@ -431,6 +431,7 @@ JumpGoldenSet read_jump_golden() {
         result.ss_in.vx_vec[i] = hex_to_double(fields[3]);
         result.ss_in.vy_vec[i] = hex_to_double(fields[4]);
         result.ss_in.vz_vec[i] = hex_to_double(fields[5]);
+        result.ss_in.m_vec[i] = hex_to_double(fields[6]);
     }
 
     // Read output data for N_PLANETS
@@ -440,8 +441,8 @@ JumpGoldenSet read_jump_golden() {
             std::exit(1);
         }
         std::stringstream ss(line);
-        std::string fields[6];
-        for (int j = 0; j < 6; ++j) {
+        std::string fields[7];
+        for (int j = 0; j < 7; ++j) {
             if (!std::getline(ss, fields[j], ',')) {
                 std::cerr << "Malformed planet line in " << fname << " at planet " << i << std::endl;
                 std::exit(1);
@@ -454,6 +455,7 @@ JumpGoldenSet read_jump_golden() {
         result.ss_golden.vx_vec[i] = hex_to_double(fields[3]);
         result.ss_golden.vy_vec[i] = hex_to_double(fields[4]);
         result.ss_golden.vz_vec[i] = hex_to_double(fields[5]);
+        result.ss_golden.m_vec[i] = hex_to_double(fields[6]);
     }
 
     file.close();
@@ -483,7 +485,7 @@ void test_jump_step() {
             };
             unsigned long diff = ulp_diff(bits, golden_bits);
             max_diff = std::max(max_diff, diff);
-            if (diff > MAX_GS13) {
+            if (diff > MAX_ULP_DIFF) {
                 std::cout << std::setprecision(17);
                 std::cout << "Mismatch for planet " << i << ", " << vec_names[v] << ":\n";
                 std::cout << "  computed=" << out_vecs[v][i] << " (0x" << std::hex << bits << std::dec << ")"

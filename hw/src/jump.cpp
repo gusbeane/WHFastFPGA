@@ -5,8 +5,8 @@ struct bodies_t jump_step(struct bodies_t ss, real_t M0, real_t dt)
     #pragma HLS pipeline II=1
     
     // pf = dt / M0
-    double pf = dt / M0;
-    double sumx = 0.0, sumy = 0.0, sumz = 0.0;
+    real_t pf = dt / M0;
+    real_t sumx = 0.0, sumy = 0.0, sumz = 0.0;
     for (int i = 0; i < N_PLANETS; i++)
     {
         #pragma HLS UNROLL factor=N_PLANETS
@@ -21,6 +21,6 @@ struct bodies_t jump_step(struct bodies_t ss, real_t M0, real_t dt)
         ss.y_vec[i] += sumy * pf;
         ss.z_vec[i] += sumz * pf;
     }
-    
+
     return ss;
 }

@@ -161,8 +161,7 @@ inline void newton_step(double* X, double beta, double r0, double eta0, double z
 }
 
 void whfast_kepler_step(double *x_vec,  double *y_vec,  double *z_vec,
-                          double *vx_vec, double *vy_vec, double *vz_vec,
-                          double *m_vec, double dt)
+                          double *vx_vec, double *vy_vec, double *vz_vec, double dt)
 {
     for(int i=0; i<N_PLANETS; i++)
     {   
@@ -246,7 +245,7 @@ double vx_vec_[N_PLANETS], vy_vec_[N_PLANETS], vz_vec_[N_PLANETS];
 double m_vec_[N_PLANETS];
 
     CONVERT_PLANETS_AVX512_TO_DOUBLE();
-    whfast_kepler_step(x_vec_, y_vec_, z_vec_, vx_vec_, vy_vec_, vz_vec_, m_vec_, dt);
+    whfast_kepler_step(x_vec_, y_vec_, z_vec_, vx_vec_, vy_vec_, vz_vec_, dt);
     CONVERT_PLANETS_DOUBLE_TO_AVX512();
 
 whfast_com_step(com, dt);

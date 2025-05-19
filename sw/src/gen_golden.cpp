@@ -10,8 +10,43 @@
 #include <sstream>
 #include "whfastfpga.h"
 #include "whfast.h"
+#include "whfast_kernel.h"
 #include "whfast_constants.h"
 #include "util.h"
+
+#define CONVERT_PLANETS_AVX512_TO_DOUBLE() \
+    do                                     \
+    {                                      \
+        _mm512_storeu_pd(x_vec_, x_vec);   \
+        _mm512_storeu_pd(y_vec_, y_vec);   \
+        _mm512_storeu_pd(z_vec_, z_vec);   \
+        _mm512_storeu_pd(vx_vec_, vx_vec); \
+        _mm512_storeu_pd(vy_vec_, vy_vec); \
+        _mm512_storeu_pd(vz_vec_, vz_vec); \
+        _mm512_storeu_pd(m_vec_, m_vec);   \
+    } while (0)
+
+// Convert double arrays back to AVX512 vectors
+#define CONVERT_PLANETS_DOUBLE_TO_AVX512()  \
+    do                                      \
+    {                                       \
+        *x_vec = _mm512_loadu_pd(x_vec_);   \
+        *y_vec = _mm512_loadu_pd(y_vec_);   \
+        *z_vec = _mm512_loadu_pd(z_vec_);   \
+        *vx_vec = _mm512_loadu_pd(vx_vec_); \
+        *vy_vec = _mm512_loadu_pd(vy_vec_); \
+        *vz_vec = _mm512_loadu_pd(vz_vec_); \
+        m_vec = _mm512_loadu_pd(m_vec_);    \
+    } while (0)
+
+// Helper to get hex string of a double
+std::string double_to_hex(double d) {
+    union { double d; uint64_t u; } u;
+    u.d = d;
+    std::ostringstream oss;
+    oss << std::hex << std::setw(16) << std::setfill('0') << u.u;
+    return oss.str();
+}
 
 // Initial conditions copied from main.cpp
 constexpr std::array<Body, N_BODIES> solarsystem_ics = {
@@ -94,18 +129,68 @@ void gen_golden(double tmax_inyr, double dt, const std::string& filename)
     std::cout << "Done. Time taken: " << elapsed.count() << " seconds." << std::endl;
 }
 
+void gen_kepler_step_csv(const std::string &filename)
+{
+    std::ofstream file("golden/" + filename);
+    std::cout << "Generating:" << filename << "... ";
+    // Generate 100 yr integration
+    std::array<Body, N_BODIES> solarsystem = solarsystem_ics;
+    move_to_center_of_mass(solarsystem);
+
+    __m512d x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec;
+    Body com;
+    double dt = 5.0 / 365.25 * 2 * M_PI; // 5 days in radians
+
+    inertial_to_democraticheliocentric_posvel(solarsystem, &com, &x_vec, &y_vec, &z_vec,
+                                              &vx_vec, &vy_vec, &vz_vec, &m_vec);
+
+    initialize_constants(solarsystem[0].mass, m_vec);
+
+    double x_vec_[N_PLANETS], y_vec_[N_PLANETS], z_vec_[N_PLANETS];
+    double vx_vec_[N_PLANETS], vy_vec_[N_PLANETS], vz_vec_[N_PLANETS];
+    double m_vec_[N_PLANETS];
+
+    CONVERT_PLANETS_AVX512_TO_DOUBLE();
+
+    // Print initial conditions to file
+    file << "x,y,z,vx,vy,vz\n";
+    file << "dt=" << double_to_hex(dt) << "\n";
+    for (int i = 0; i < N_PLANETS; ++i)
+    {
+        file << double_to_hex(x_vec_[i]) << ","
+             << double_to_hex(y_vec_[i]) << ","
+             << double_to_hex(z_vec_[i]) << ","
+             << double_to_hex(vx_vec_[i]) << ","
+             << double_to_hex(vy_vec_[i]) << ","
+             << double_to_hex(vz_vec_[i]) << "\n";
+    }
+
+    whfast_kepler_step(x_vec_, y_vec_, z_vec_, vx_vec_, vy_vec_, vz_vec_, dt);
+
+    // Print results to file
+    for (int i = 0; i < N_PLANETS; ++i)
+    {
+        file << double_to_hex(x_vec_[i]) << ","
+             << double_to_hex(y_vec_[i]) << ","
+             << double_to_hex(z_vec_[i]) << ","
+             << double_to_hex(vx_vec_[i]) << ","
+             << double_to_hex(vy_vec_[i]) << ","
+             << double_to_hex(vz_vec_[i]) << "\n";
+    }
+
+    // whfast_integrate(solarsystem, &com, dt, Nint);
+
+    // Output mass, position, and velocities of the particles
+    // output_to_csv(solarsystem, filename);
+
+    file.close();
+
+    std::cout << "Done." << std::endl;
+}
+
 // Remove extern "C" and use regular C++ function declarations
 void stiefel_Gs03(double* Gs0, double* Gs1, double* Gs2, double* Gs3, double beta, double X);
 void stiefel_Gs13(double* Gs1, double* Gs2, double* Gs3, double beta, double X);
-
-// Helper to get hex string of a double
-std::string double_to_hex(double d) {
-    union { double d; uint64_t u; } u;
-    u.d = d;
-    std::ostringstream oss;
-    oss << std::hex << std::setw(16) << std::setfill('0') << u.u;
-    return oss.str();
-}
 
 #define BETA_MIN 0.01
 #define BETA_MAX 3.0
@@ -157,7 +242,8 @@ void gen_stiefel_Gs13_csv(const std::string& filename) {
 #define ZETA0_MAX 0.25
 
 // Generates a CSV of input vectors and outputs for newton_step and halley_step
-void gen_newton_halley_input_csv(const std::string& filename_newton, const std::string& filename_halley) {
+void gen_newton_halley_csv(const std::string &filename_newton, const std::string &filename_halley)
+{
     std::ofstream file_newton("golden/" + filename_newton);
     std::ofstream file_halley("golden/" + filename_halley);
     
@@ -221,7 +307,9 @@ int main() {
     gen_stiefel_Gs13_csv("golden_stiefel_Gs13.csv");
 
     // Generate Newton-Halley input CSV
-    gen_newton_halley_input_csv("golden_newton_step.csv", "golden_halley_step.csv");
+    gen_newton_halley_csv("golden_newton_step.csv", "golden_halley_step.csv");
+
+    gen_kepler_step_csv("golden_kepler_step.csv");
 
     std::cout << "All golden vectors made." << std::endl;
 

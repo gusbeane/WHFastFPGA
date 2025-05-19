@@ -182,7 +182,9 @@ std::vector<StiefelGolden> read_stiefel_golden(StiefelMode mode) {
 }
 
 // Unified test function (no function pointer, just mode)
-void test_stiefel(const char* name, StiefelMode mode) {
+void test_stiefel(StiefelMode mode) {
+    const char *name = (mode == GS03) ? "test_stiefel_Gs03" : "test_stiefel_Gs13";
+
     auto golden = read_stiefel_golden(mode);
     int fail = 0, total = 0;
     unsigned long max_diff = 0;
@@ -245,8 +247,8 @@ int main()
 
     // verify_output(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec);
 
-    test_stiefel("test_stiefel_Gs13", GS13);
-    test_stiefel("test_stiefel_Gs03", GS03);
+    test_stiefel(GS13);
+    test_stiefel(GS03);
 
     // Now run kepler step
 }

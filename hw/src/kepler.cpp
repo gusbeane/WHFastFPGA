@@ -2,6 +2,13 @@
 
 // Scalar Stiefel function for Halley's method, returning Gs0, Gs1, Gs2, and Gs3
 void stiefel_Gs03(real_t* Gs0, real_t* Gs1, real_t* Gs2, real_t* Gs3, real_t beta, real_t X) {
+#pragma HLS interface mode = ap_none register port = Gs0
+#pragma HLS interface mode = ap_none register port = Gs1
+#pragma HLS interface mode = ap_none register port = Gs2
+#pragma HLS interface mode = ap_none register port = Gs3
+
+#pragma HLS pipeline II=1
+
     real_t X2 = X * X;
     real_t z = X2 * beta;
     // Use a truncated Taylor series for the Stumpff functions

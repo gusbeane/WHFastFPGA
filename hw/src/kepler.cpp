@@ -224,24 +224,25 @@ real_t newton_step(real_t X, real_t beta, real_t r0, real_t eta0, real_t zeta0, 
     return X;
 }
 
-void kepler_step(real_t *x_vec, real_t *y_vec, real_t *z_vec,
-                        real_t *vx_vec, real_t *vy_vec, real_t *vz_vec,
-                        real_t *m_vec, real_t M0, real_t dt)
+struct bodies_t kepler_step(struct bodies_t ss, real_t M0, real_t dt)
 {
+#pragma HLS pipeline II = 1
+
     for (int i = 0; i < N_PLANETS; i++)
     {
 #pragma HLS UNROLL factor=N_PLANETS
+
         real_t r2, r0, r01, v2;
         real_t beta, eta0, zeta0;
         real_t Gs1, Gs2, Gs3, eta0Gs1zeta0Gs2, ri;
-        r2 = x_vec[i] * x_vec[i] + y_vec[i] * y_vec[i] + z_vec[i] * z_vec[i];
+        r2 = ss.x_vec[i] * ss.x_vec[i] + ss.y_vec[i] * ss.y_vec[i] + ss.z_vec[i] * ss.z_vec[i];
         r0 = sqrt(r2);
         r01 = R(1.0) / r0;
 
-        v2 = vx_vec[i] * vx_vec[i] + vy_vec[i] * vy_vec[i] + vz_vec[i] * vz_vec[i];
+        v2 = ss.vx_vec[i] * ss.vx_vec[i] + ss.vy_vec[i] * ss.vy_vec[i] + ss.vz_vec[i] * ss.vz_vec[i];
         beta = R(2.0) * M0 * r01 - v2;
 
-        eta0 = x_vec[i] * vx_vec[i] + y_vec[i] * vy_vec[i] + z_vec[i] * vz_vec[i];
+        eta0 = ss.x_vec[i] * ss.vx_vec[i] + ss.y_vec[i] * ss.vy_vec[i] + ss.z_vec[i] * ss.vz_vec[i];
         zeta0 = -beta * r0 + M0;
 
         // Initial guess
@@ -271,24 +272,26 @@ void kepler_step(real_t *x_vec, real_t *y_vec, real_t *z_vec,
         real_t ngd = M0 * Gs2; // negative gd
         ngd = ngd * ri;
 
-        real_t nx = -nf * x_vec[i] + x_vec[i];
-        nx = nx + g * vx_vec[i];
+        real_t nx = -nf * ss.x_vec[i] + ss.x_vec[i];
+        nx = nx + g * ss.vx_vec[i];
 
-        real_t ny = -nf * y_vec[i] + y_vec[i];
-        ny = ny + g * vy_vec[i];
+        real_t ny = -nf * ss.y_vec[i] + ss.y_vec[i];
+        ny = ny + g * ss.vy_vec[i];
 
-        real_t nz = -nf * z_vec[i] + z_vec[i];
-        nz = nz + g * vz_vec[i];
+        real_t nz = -nf * ss.z_vec[i] + ss.z_vec[i];
+        nz = nz + g * ss.vz_vec[i];
 
-        vx_vec[i] = -ngd * vx_vec[i] + vx_vec[i];
-        vx_vec[i] = -nfd * x_vec[i] + vx_vec[i];
-        vy_vec[i] = -ngd * vy_vec[i] + vy_vec[i];
-        vy_vec[i] = -nfd * y_vec[i] + vy_vec[i];
-        vz_vec[i] = -ngd * vz_vec[i] + vz_vec[i];
-        vz_vec[i] = -nfd * z_vec[i] + vz_vec[i];
+        ss.vx_vec[i] = -ngd * ss.vx_vec[i] + ss.vx_vec[i];
+        ss.vx_vec[i] = -nfd * ss.x_vec[i] + ss.vx_vec[i];
+        ss.vy_vec[i] = -ngd * ss.vy_vec[i] + ss.vy_vec[i];
+        ss.vy_vec[i] = -nfd * ss.y_vec[i] + ss.vy_vec[i];
+        ss.vz_vec[i] = -ngd * ss.vz_vec[i] + ss.vz_vec[i];
+        ss.vz_vec[i] = -nfd * ss.z_vec[i] + ss.vz_vec[i];
 
-        x_vec[i] = nx;
-        y_vec[i] = ny;
-        z_vec[i] = nz;
+        ss.x_vec[i] = nx;
+        ss.y_vec[i] = ny;
+        ss.z_vec[i] = nz;
     }
+
+    return ss;
 }

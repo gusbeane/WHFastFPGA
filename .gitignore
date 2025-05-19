@@ -60,6 +60,7 @@ hw/_ide/
 *.jou
 *.rpt
 *.pb
+*.hlsrun_cosim_summary
 
 # ----------------------------------------
 # IDE & compilation database

@@ -149,7 +149,7 @@ void gen_stiefel_Gs13_csv(const std::string& filename) {
 }
 
 #define N_NEWTON_HALLEY 8
-#define R0_MIN 0.2
+#define R0_MIN 0.25
 #define R0_MAX 50.0
 #define ETA0_MIN -0.25
 #define ETA0_MAX 0.25

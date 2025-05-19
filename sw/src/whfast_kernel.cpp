@@ -243,32 +243,26 @@ void whfast_drift_step(double *x_vec,  double *y_vec,  double *z_vec,
 whfast_com_step(com, dt);
 }
 
-// Performs one complete jump step
-void whfast_jump_step(__m512d *x_vec, __m512d *y_vec, __m512d *z_vec,
-                         __m512d *vx_vec, __m512d *vy_vec, __m512d *vz_vec,
-                         __m512d m_vec, double dt)
+// Performs one complete jump step (scalar version)
+void whfast_jump_step(double *x_vec, double *y_vec, double *z_vec,
+                      double *vx_vec, double *vy_vec, double *vz_vec,
+                      double *m_vec, double dt)
 {
-    __m512d pf512 = _mm512_set1_pd(dt / kConsts->M0);
-
-    __m512d sumx = _mm512_mul_pd(m_vec, *vx_vec);
-    __m512d sumy = _mm512_mul_pd(m_vec, *vy_vec);
-    __m512d sumz = _mm512_mul_pd(m_vec, *vz_vec);
-
-    sumx = _mm512_add_pd(_mm512_shuffle_pd(sumx, sumx, 0x55), sumx); // Swapping neighbouring elements
-    sumx = _mm512_add_pd(_mm512_permutex_pd(sumx, _MM_PERM_ABCD), sumx);
-    sumx = _mm512_add_pd(_mm512_shuffle_f64x2(sumx, sumx, 78), sumx); // 78 is _MM_SHUFFLE(1,0,3,2), changed for icx
-
-    sumy = _mm512_add_pd(_mm512_shuffle_pd(sumy, sumy, 0x55), sumy);
-    sumy = _mm512_add_pd(_mm512_permutex_pd(sumy, _MM_PERM_ABCD), sumy);
-    sumy = _mm512_add_pd(_mm512_shuffle_f64x2(sumy, sumy, 78), sumy);
-
-    sumz = _mm512_add_pd(_mm512_shuffle_pd(sumz, sumz, 0x55), sumz);
-    sumz = _mm512_add_pd(_mm512_permutex_pd(sumz, _MM_PERM_ABCD), sumz);
-    sumz = _mm512_add_pd(_mm512_shuffle_f64x2(sumz, sumz, 78), sumz);
-
-    *x_vec = _mm512_fmadd_pd(sumx, pf512, *x_vec);
-    *y_vec = _mm512_fmadd_pd(sumy, pf512, *y_vec);
-    *z_vec = _mm512_fmadd_pd(sumz, pf512, *z_vec);
+    // pf = dt / M0
+    double pf = dt / kConsts->M0;
+    double sumx = 0.0, sumy = 0.0, sumz = 0.0;
+    for (int i = 0; i < N_PLANETS; i++)
+    {
+        sumx += m_vec[i] * vx_vec[i];
+        sumy += m_vec[i] * vy_vec[i];
+        sumz += m_vec[i] * vz_vec[i];
+    }
+    for (int i = 0; i < N_PLANETS; i++)
+    {
+        x_vec[i] += sumx * pf;
+        y_vec[i] += sumy * pf;
+        z_vec[i] += sumz * pf;
+    }
 }
 
 // Helper functions for the interaction step
@@ -485,39 +479,38 @@ void whfast_kernel(__m512d *x_vec, __m512d *y_vec, __m512d *z_vec,
     // Perform the initial half-drift step
     CONVERT_PLANETS_AVX512_TO_DOUBLE();
     whfast_drift_step(x_vec_, y_vec_, z_vec_, vx_vec_, vy_vec_, vz_vec_, com, dt / 2.0);
-    CONVERT_PLANETS_DOUBLE_TO_AVX512();
 
     for (int i = 0; i < Nint - 1; i++)
     {
         // Perform the jump step (first half)
-        whfast_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt / 2.0);
+        whfast_jump_step(x_vec_, y_vec_, z_vec_, vx_vec_, vy_vec_, vz_vec_, m_vec_, dt / 2.0);
 
         // Perform the interaction step
+        CONVERT_PLANETS_DOUBLE_TO_AVX512();
         whfast_interaction_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt);
+        CONVERT_PLANETS_AVX512_TO_DOUBLE();
 
         // Perform the jump step (second half)
-        whfast_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt / 2.0);
+    whfast_jump_step(x_vec_, y_vec_, z_vec_, vx_vec_, vy_vec_, vz_vec_, m_vec_, dt / 2.0);
 
-        // Perform the drift step
-        CONVERT_PLANETS_AVX512_TO_DOUBLE();
-        whfast_drift_step(x_vec_, y_vec_, z_vec_, vx_vec_, vy_vec_, vz_vec_, com, dt);
-        CONVERT_PLANETS_DOUBLE_TO_AVX512();
-
+    // Perform the drift step
+    whfast_drift_step(x_vec_, y_vec_, z_vec_, vx_vec_, vy_vec_, vz_vec_, com, dt);
     }
 
     // Final iteration happens outside loop to avoid branching
 
     // Perform the jump step (first half)
-    whfast_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt / 2.0);
+    whfast_jump_step(x_vec_, y_vec_, z_vec_, vx_vec_, vy_vec_, vz_vec_, m_vec_, dt / 2.0);
 
     // Perform the interaction step
+    CONVERT_PLANETS_DOUBLE_TO_AVX512();
     whfast_interaction_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt);
+    CONVERT_PLANETS_AVX512_TO_DOUBLE();
 
     // Perform the jump step (second half)
-    whfast_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt / 2.0);
+    whfast_jump_step(x_vec_, y_vec_, z_vec_, vx_vec_, vy_vec_, vz_vec_, m_vec_, dt / 2.0);
 
     // Perform the final half-drift step
-    CONVERT_PLANETS_AVX512_TO_DOUBLE();
     whfast_drift_step(x_vec_, y_vec_, z_vec_, vx_vec_, vy_vec_, vz_vec_, com, dt / 2.0);
     CONVERT_PLANETS_DOUBLE_TO_AVX512();
 

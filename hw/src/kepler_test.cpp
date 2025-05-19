@@ -207,6 +207,81 @@ void test_stiefel_Gs13() {
     }
 }
 
+void test_stiefel_Gs03() {
+    std::ifstream file("golden_stiefel_Gs03.csv");
+    if (!file.is_open()) {
+        std::cerr << "Error opening golden_stiefel_Gs03.csv" << std::endl;
+        std::exit(1);
+    }
+    std::string line;
+    // Skip header
+    if (!std::getline(file, line)) {
+        std::cerr << "Error reading header from golden_stiefel_Gs03.csv" << std::endl;
+        std::exit(1);
+    }
+    int fail = 0, total = 0;
+    unsigned long max_diff = 0;
+    while (std::getline(file, line)) {
+        std::stringstream ss(line);
+        std::string beta_hex, X_hex, Gs0_hex, Gs1_hex, Gs2_hex, Gs3_hex;
+        if (!std::getline(ss, beta_hex, ',')) break;
+        if (!std::getline(ss, X_hex, ',')) break;
+        if (!std::getline(ss, Gs0_hex, ',')) break;
+        if (!std::getline(ss, Gs1_hex, ',')) break;
+        if (!std::getline(ss, Gs2_hex, ',')) break;
+        if (!std::getline(ss, Gs3_hex, ',')) break;
+        double beta = hex_to_double(beta_hex);
+        double X = hex_to_double(X_hex);
+        double Gs0_golden = hex_to_double(Gs0_hex);
+        double Gs1_golden = hex_to_double(Gs1_hex);
+        double Gs2_golden = hex_to_double(Gs2_hex);
+        double Gs3_golden = hex_to_double(Gs3_hex);
+        double Gs0, Gs1, Gs2, Gs3;
+        stiefel_Gs03(&Gs0, &Gs1, &Gs2, &Gs3, beta, X);
+        uint64_t Gs0_bits, Gs1_bits, Gs2_bits, Gs3_bits;
+        uint64_t Gs0_golden_bits, Gs1_golden_bits, Gs2_golden_bits, Gs3_golden_bits;
+        std::memcpy(&Gs0_bits, &Gs0, sizeof(double));
+        std::memcpy(&Gs1_bits, &Gs1, sizeof(double));
+        std::memcpy(&Gs2_bits, &Gs2, sizeof(double));
+        std::memcpy(&Gs3_bits, &Gs3, sizeof(double));
+        std::memcpy(&Gs0_golden_bits, &Gs0_golden, sizeof(double));
+        std::memcpy(&Gs1_golden_bits, &Gs1_golden, sizeof(double));
+        std::memcpy(&Gs2_golden_bits, &Gs2_golden, sizeof(double));
+        std::memcpy(&Gs3_golden_bits, &Gs3_golden, sizeof(double));
+        auto ulp_diff = [](uint64_t a, uint64_t b) -> uint64_t {
+            return (a > b) ? (a - b) : (b - a);
+        };
+        bool fail_Gs0 = ulp_diff(Gs0_bits, Gs0_golden_bits) > MAX_GS13;
+        bool fail_Gs1 = ulp_diff(Gs1_bits, Gs1_golden_bits) > MAX_GS13;
+        bool fail_Gs2 = ulp_diff(Gs2_bits, Gs2_golden_bits) > MAX_GS13;
+        bool fail_Gs3 = ulp_diff(Gs3_bits, Gs3_golden_bits) > MAX_GS13;
+        max_diff = std::max(max_diff,
+                    std::max(ulp_diff(Gs0_bits, Gs0_golden_bits),
+                    std::max(ulp_diff(Gs1_bits, Gs1_golden_bits),
+                    std::max(ulp_diff(Gs2_bits, Gs2_golden_bits),
+                             ulp_diff(Gs3_bits, Gs3_golden_bits)))));
+        if (fail_Gs0 || fail_Gs1 || fail_Gs2 || fail_Gs3) {
+            std::cout << std::setprecision(17);
+            std::cout << "Mismatch at line " << (total+2) << ":\n";
+            std::cout << "  beta=" << beta << ", X=" << X << std::endl;
+            std::cout << "  Gs0: computed=" << Gs0 << " (0x" << std::hex << Gs0_bits << std::dec << "), golden=" << Gs0_golden << " (0x" << std::hex << Gs0_golden_bits << std::dec << ") | ulp_diff=" << ulp_diff(Gs0_bits, Gs0_golden_bits) << std::endl;
+            std::cout << "  Gs1: computed=" << Gs1 << " (0x" << std::hex << Gs1_bits << std::dec << "), golden=" << Gs1_golden << " (0x" << std::hex << Gs1_golden_bits << std::dec << ") | ulp_diff=" << ulp_diff(Gs1_bits, Gs1_golden_bits) << std::endl;
+            std::cout << "  Gs2: computed=" << Gs2 << " (0x" << std::hex << Gs2_bits << std::dec << "), golden=" << Gs2_golden << " (0x" << std::hex << Gs2_golden_bits << std::dec << ") | ulp_diff=" << ulp_diff(Gs2_bits, Gs2_golden_bits) << std::endl;
+            std::cout << "  Gs3: computed=" << Gs3 << " (0x" << std::hex << Gs3_bits << std::dec << "), golden=" << Gs3_golden << " (0x" << std::hex << Gs3_golden_bits << std::dec << ") | ulp_diff=" << ulp_diff(Gs3_bits, Gs3_golden_bits) << std::endl;
+            fail++;
+        }
+        total++;
+    }
+    file.close();
+    if (fail) {
+        std::cout << "test_stiefel_Gs03 failed with " << fail << " mismatches out of " << total << "." << std::endl;
+        std::cout << "Maximum ULP difference: " << max_diff << std::endl;
+        std::exit(fail);
+    } else {
+        std::cout << "test_stiefel_Gs03 passed! (" << total << " cases, max_diff=" << max_diff << ")" << std::endl;
+    }
+}
+
 int main()
 {
     // First read in the initial conditions
@@ -225,6 +300,7 @@ int main()
     // verify_output(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec);
 
     test_stiefel_Gs13();
+    test_stiefel_Gs03();
 
     // Now run kepler step
 }

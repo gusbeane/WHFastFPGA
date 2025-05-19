@@ -18,4 +18,13 @@ extern "C"
         double  beta,
         double  X
     );
+
+    void stiefel_Gs03(
+        double* Gs0,
+        double* Gs1,
+        double* Gs2,
+        double* Gs3,
+        double  beta,
+        double  X
+    );
 }

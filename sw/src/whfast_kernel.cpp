@@ -233,20 +233,12 @@ void whfast_com_step(Body *com, double dt)
         com->pos[i] += dt * com->vel[i];
 }
 
-void whfast_drift_step(__m512d *x_vec,  __m512d *y_vec,  __m512d *z_vec,
-    __m512d *vx_vec, __m512d *vy_vec, __m512d *vz_vec,
-    __m512d m_vec, Body *com, double dt)
+void whfast_drift_step(double *x_vec,  double *y_vec,  double *z_vec,
+    double *vx_vec, double *vy_vec, double *vz_vec, Body *com, double dt)
 {
 // We first do the kepler step, then the com step.
-__m512d xload = _mm512_loadu_pd(x_vec);
 
-double x_vec_[N_PLANETS], y_vec_[N_PLANETS], z_vec_[N_PLANETS];
-double vx_vec_[N_PLANETS], vy_vec_[N_PLANETS], vz_vec_[N_PLANETS];
-double m_vec_[N_PLANETS];
-
-    CONVERT_PLANETS_AVX512_TO_DOUBLE();
-    whfast_kepler_step(x_vec_, y_vec_, z_vec_, vx_vec_, vy_vec_, vz_vec_, dt);
-    CONVERT_PLANETS_DOUBLE_TO_AVX512();
+    whfast_kepler_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, dt);
 
 whfast_com_step(com, dt);
 }
@@ -485,8 +477,15 @@ void whfast_kernel(__m512d *x_vec, __m512d *y_vec, __m512d *z_vec,
     // Call the main integration routine
     // This is where the actual integration happens
 
+    // Temporary double arrays
+    double x_vec_[N_PLANETS], y_vec_[N_PLANETS], z_vec_[N_PLANETS];
+    double vx_vec_[N_PLANETS], vy_vec_[N_PLANETS], vz_vec_[N_PLANETS];
+    double m_vec_[N_PLANETS];
+
     // Perform the initial half-drift step
-    whfast_drift_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, com, dt / 2.0);
+    CONVERT_PLANETS_AVX512_TO_DOUBLE();
+    whfast_drift_step(x_vec_, y_vec_, z_vec_, vx_vec_, vy_vec_, vz_vec_, com, dt / 2.0);
+    CONVERT_PLANETS_DOUBLE_TO_AVX512();
 
     for (int i = 0; i < Nint - 1; i++)
     {
@@ -500,7 +499,10 @@ void whfast_kernel(__m512d *x_vec, __m512d *y_vec, __m512d *z_vec,
         whfast_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt / 2.0);
 
         // Perform the drift step
-        whfast_drift_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, com, dt);
+        CONVERT_PLANETS_AVX512_TO_DOUBLE();
+        whfast_drift_step(x_vec_, y_vec_, z_vec_, vx_vec_, vy_vec_, vz_vec_, com, dt);
+        CONVERT_PLANETS_DOUBLE_TO_AVX512();
+
     }
 
     // Final iteration happens outside loop to avoid branching
@@ -515,5 +517,8 @@ void whfast_kernel(__m512d *x_vec, __m512d *y_vec, __m512d *z_vec,
     whfast_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt / 2.0);
 
     // Perform the final half-drift step
-    whfast_drift_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, com, dt / 2.0);
+    CONVERT_PLANETS_AVX512_TO_DOUBLE();
+    whfast_drift_step(x_vec_, y_vec_, z_vec_, vx_vec_, vy_vec_, vz_vec_, com, dt / 2.0);
+    CONVERT_PLANETS_DOUBLE_TO_AVX512();
+
 }

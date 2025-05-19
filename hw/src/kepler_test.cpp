@@ -1,4 +1,5 @@
 #include "kepler.h"
+#include "jump.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -361,6 +362,147 @@ void test_kepler_step() {
     }
 }
 
+// Struct for golden data
+struct JumpGoldenSet {
+    double M0, dt;
+    bodies_t ss_in;
+    bodies_t ss_golden;
+};
+
+JumpGoldenSet read_jump_golden() {
+    JumpGoldenSet result;
+    std::string fname = "golden_jump_step.csv";
+    std::ifstream file(fname);
+    if (!file.is_open()) {
+        std::cerr << "Error opening " << fname << std::endl;
+        std::exit(1);
+    }
+    std::string line;
+    // Skip header
+    if (!std::getline(file, line)) {
+        std::cerr << "Error reading header from " << fname << std::endl;
+        std::exit(1);
+    }
+    
+    // Read dt line (format: dt=hexnumber)
+    if (!std::getline(file, line)) {
+        std::cerr << "Error reading dt from " << fname << std::endl;
+        std::exit(1);
+    }
+    size_t eqpos = line.find('=');
+    if (eqpos == std::string::npos) {
+        std::cerr << "Malformed dt line in " << fname << std::endl;
+        std::exit(1);
+    }
+    std::string dt_hex = line.substr(eqpos + 1);
+    result.dt = hex_to_double(dt_hex);
+
+    // Read M0 line (format: M0=hexnumber)
+    if (!std::getline(file, line)) {
+        std::cerr << "Error reading M0 from " << fname << std::endl;
+        std::exit(1);
+    }
+    eqpos = line.find('=');
+    if (eqpos == std::string::npos) {
+        std::cerr << "Malformed M0 line in " << fname << std::endl;
+        std::exit(1);
+    }
+    std::string M0_hex = line.substr(eqpos + 1);
+    result.M0 = hex_to_double(M0_hex);
+
+    // Read input data for N_PLANETS
+    for (int i = 0; i < N_PLANETS; ++i) {
+        if (!std::getline(file, line)) {
+            std::cerr << "Error: not enough planet lines in " << fname << std::endl;
+            std::exit(1);
+        }
+        std::stringstream ss(line);
+        std::string fields[6];
+        for (int j = 0; j < 6; ++j) {
+            if (!std::getline(ss, fields[j], ',')) {
+                std::cerr << "Malformed planet line in " << fname << " at planet " << i << std::endl;
+                std::exit(1);
+            }
+        }
+        // Input state
+        result.ss_in.x_vec[i]  = hex_to_double(fields[0]);
+        result.ss_in.y_vec[i]  = hex_to_double(fields[1]);
+        result.ss_in.z_vec[i]  = hex_to_double(fields[2]);
+        result.ss_in.vx_vec[i] = hex_to_double(fields[3]);
+        result.ss_in.vy_vec[i] = hex_to_double(fields[4]);
+        result.ss_in.vz_vec[i] = hex_to_double(fields[5]);
+    }
+
+    // Read output data for N_PLANETS
+    for (int i = 0; i < N_PLANETS; ++i) {
+        if (!std::getline(file, line)) {
+            std::cerr << "Error: not enough planet lines in " << fname << std::endl;
+            std::exit(1);
+        }
+        std::stringstream ss(line);
+        std::string fields[6];
+        for (int j = 0; j < 6; ++j) {
+            if (!std::getline(ss, fields[j], ',')) {
+                std::cerr << "Malformed planet line in " << fname << " at planet " << i << std::endl;
+                std::exit(1);
+            }
+        }
+        // Input state
+        result.ss_golden.x_vec[i]  = hex_to_double(fields[0]);
+        result.ss_golden.y_vec[i]  = hex_to_double(fields[1]);
+        result.ss_golden.z_vec[i]  = hex_to_double(fields[2]);
+        result.ss_golden.vx_vec[i] = hex_to_double(fields[3]);
+        result.ss_golden.vy_vec[i] = hex_to_double(fields[4]);
+        result.ss_golden.vz_vec[i] = hex_to_double(fields[5]);
+    }
+
+    file.close();
+    return result;
+}
+
+void test_jump_step() {
+    struct JumpGoldenSet jump_gold = read_jump_golden();
+    
+    // Run computation
+    bodies_t ss_in = jump_gold.ss_in;
+    bodies_t ss_out = jump_step(ss_in, jump_gold.M0, jump_gold.dt);
+    bodies_t ss_golden = jump_gold.ss_golden;
+
+    int fail = 0, total = 0;
+    unsigned long max_diff = 0;
+    const char* vec_names[6] = {"x_vec", "y_vec", "z_vec", "vx_vec", "vy_vec", "vz_vec"};
+    for (int i = 0; i < N_PLANETS; ++i) {
+        double* out_vecs[6] = {ss_out.x_vec, ss_out.y_vec, ss_out.z_vec, ss_out.vx_vec, ss_out.vy_vec, ss_out.vz_vec};
+        double* gold_vecs[6] = {ss_golden.x_vec, ss_golden.y_vec, ss_golden.z_vec, ss_golden.vx_vec, ss_golden.vy_vec, ss_golden.vz_vec};
+        for (int v = 0; v < 6; ++v) {
+            uint64_t bits, golden_bits;
+            std::memcpy(&bits, &out_vecs[v][i], sizeof(double));
+            std::memcpy(&golden_bits, &gold_vecs[v][i], sizeof(double));
+            auto ulp_diff = [](uint64_t a, uint64_t b) -> uint64_t {
+                return (a > b) ? (a - b) : (b - a);
+            };
+            unsigned long diff = ulp_diff(bits, golden_bits);
+            max_diff = std::max(max_diff, diff);
+            if (diff > MAX_GS13) {
+                std::cout << std::setprecision(17);
+                std::cout << "Mismatch for planet " << i << ", " << vec_names[v] << ":\n";
+                std::cout << "  computed=" << out_vecs[v][i] << " (0x" << std::hex << bits << std::dec << ")"
+                          << ", golden=" << gold_vecs[v][i] << " (0x" << std::hex << golden_bits << std::dec << ")"
+                          << " | ulp_diff=" << diff << std::endl;
+                fail++;
+            }
+            total++;
+        }
+    }
+    if (fail) {
+        std::cout << "test_jump_step failed with " << fail << " mismatches out of " << total << "." << std::endl;
+        std::cout << "Maximum ULP difference: " << max_diff << std::endl;
+        std::exit(fail);
+    } else {
+        std::cout << "test_jump_step passed! (" << total << " cases, max_diff=" << max_diff << ")" << std::endl;
+    }
+}
+
 int main()
 {
     // ---------------------------
@@ -377,5 +519,10 @@ int main()
 
     // 3. Full Kepler step tests
     test_kepler_step();
+
+     // ---------------------------
+    // Jump step tests
+    // ---------------------------
+    test_jump_step();
 
 }

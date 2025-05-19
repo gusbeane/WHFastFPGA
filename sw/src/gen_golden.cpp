@@ -185,6 +185,7 @@ void gen_kepler_jump_step_csv(const std::string &filename_kepler, const std::str
     // Print initial conditions to file
     file_jump << "x,y,z,vx,vy,vz,m\n";
     file_jump << "dt=" << double_to_hex(dt) << "\n";
+    file_jump << "M0=" << double_to_hex(kConsts->M0) << "\n";
     for (int i = 0; i < N_PLANETS; ++i)
     {
         file_jump << double_to_hex(x_vec_[i]) << ","

@@ -58,6 +58,11 @@ void stiefel_Gs13(real_t* Gs1, real_t* Gs2, real_t* Gs3, real_t beta, real_t X) 
 #pragma HLS interface mode = ap_none register port = Gs2
 #pragma HLS interface mode = ap_none register port = Gs3
 
+// Change #2
+// II 124 BRAM 0 DSP 19  FF 2870  LUT 2217
+// II 1   BRAM 0 DSP 227 FF 19815 LUT 15407
+#pragma HLS pipeline II=1
+
     real_t X2 = X * X;
     real_t z = X2 * beta;
     // Use a truncated Taylor series for the Stumpff functions

@@ -8,7 +8,6 @@
 #include <iomanip>
 #include <chrono> // For timing
 #include <sstream>
-#include "whfastfpga.h"
 #include "whfast.h"
 #include "whfast_kernel.h"
 #include "whfast_constants.h"

@@ -6,7 +6,6 @@
 #include <sstream>
 #include <stdexcept>
 #include <chrono> // For timing
-#include "whfastfpga.h"
 #include "whfast.h"
 #include "whfast_constants.h"
 #include "whfast_kernel.h"

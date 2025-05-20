@@ -3,7 +3,6 @@
 #include <math.h>
 #include <array>
 #include <iostream>
-#include "whfastfpga.h"
 #include "whfast.h"
 #include "whfast_constants.h"
 #include "util.h"

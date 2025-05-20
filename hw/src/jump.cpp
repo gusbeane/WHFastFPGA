@@ -6,7 +6,7 @@ struct bodies_t jump_step(struct bodies_t ss, real_t M0, real_t dt)
     
     // pf = dt / M0
     real_t pf = dt / M0;
-    real_t sumx = 0.0, sumy = 0.0, sumz = 0.0;
+    real_t sumx = R(0.0), sumy = R(0.0), sumz = R(0.0);
     for (int i = 0; i < N_PLANETS; i++)
     {
         #pragma HLS UNROLL factor=N_PLANETS

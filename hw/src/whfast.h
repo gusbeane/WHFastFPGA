@@ -6,19 +6,19 @@
 
 #define N_PLANETS 8
 
-struct bodies_t
-{
-    double x_vec[N_PLANETS];
-    double y_vec[N_PLANETS];
-    double z_vec[N_PLANETS];
-    double vx_vec[N_PLANETS];
-    double vy_vec[N_PLANETS];
-    double vz_vec[N_PLANETS];
-    double m_vec[N_PLANETS];
-};
-
 // typedef ap_fixed<48, 10> real_t;
 typedef double real_t;
 #define R(x) real_t(x)
+
+struct bodies_t
+{
+    real_t x_vec[N_PLANETS];
+    real_t y_vec[N_PLANETS];
+    real_t z_vec[N_PLANETS];
+    real_t vx_vec[N_PLANETS];
+    real_t vy_vec[N_PLANETS];
+    real_t vz_vec[N_PLANETS];
+    real_t m_vec[N_PLANETS];
+};
 
 #endif // WHFAST_H

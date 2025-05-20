@@ -337,10 +337,7 @@ void whfast_kernel(double *x_vec, double *y_vec, double *z_vec,
     // Call the main integration routine
     // This is where the actual integration happens
 
-    // Perform the initial half-drift step
-    whfast_drift_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, com, dt / 2.0);
-
-    for (int i = 0; i < Nint - 1; i++)
+    for (int i = 0; i < Nint; i++)
     {
         // Perform the jump step (first half)
         whfast_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt / 2.0);
@@ -366,18 +363,4 @@ void whfast_kernel(double *x_vec, double *y_vec, double *z_vec,
         // Perform the drift step
         whfast_drift_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, com, dt);
     }
-
-    // Final iteration happens outside loop to avoid branching
-
-    // Perform the jump step (first half)
-    whfast_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt / 2.0);
-
-    // Perform the interaction step
-    whfast_interaction_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt);
-
-    // Perform the jump step (second half)
-    whfast_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt / 2.0);
-
-    // Perform the final half-drift step
-    whfast_drift_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, com, dt / 2.0);
 }

@@ -522,7 +522,7 @@ int main()
     // 3. Full Kepler step tests
     test_kepler_step();
 
-     // ---------------------------
+    // ---------------------------
     // Jump step tests
     // ---------------------------
     test_jump_step();

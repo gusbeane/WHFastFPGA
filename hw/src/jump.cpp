@@ -2,6 +2,7 @@
 
 struct bodies_t jump_step(struct bodies_t ss, real_t M0, real_t dt)
 {
+    #pragma HLS inline off
     #pragma HLS pipeline II=1
     
     // pf = dt / M0

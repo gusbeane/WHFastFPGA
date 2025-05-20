@@ -7,7 +7,8 @@ void stiefel_Gs03(real_t* Gs0, real_t* Gs1, real_t* Gs2, real_t* Gs3, real_t bet
 #pragma HLS interface mode = ap_none register port = Gs2
 #pragma HLS interface mode = ap_none register port = Gs3
 
-#pragma HLS pipeline II=1
+// #pragma HLS pipeline II=1
+#pragma HLS inline
 
     real_t X2 = X * X;
     real_t z = X2 * beta;
@@ -187,7 +188,8 @@ void stiefel_Gs13(real_t* Gs1, real_t* Gs2, real_t* Gs3, real_t beta, real_t X) 
 
 // Scalar Halley step function for Kepler iteration
 real_t halley_step(real_t X, real_t beta, real_t r0, real_t eta0, real_t zeta0, real_t dt) {
-    #pragma HLS pipeline II=1
+    // #pragma HLS pipeline II=1
+    #pragma HLS inline
 
     real_t Gs0, Gs1, Gs2, Gs3;
     stiefel_Gs03(&Gs0, &Gs1, &Gs2, &Gs3, beta, X);
@@ -211,7 +213,8 @@ real_t halley_step(real_t X, real_t beta, real_t r0, real_t eta0, real_t zeta0, 
 // Scalar Newton step function for Kepler iteration
 real_t newton_step(real_t X, real_t beta, real_t r0, real_t eta0, real_t zeta0, real_t dt)
 {
-#pragma HLS pipeline II = 1
+// #pragma HLS pipeline II = 1
+#pragma HLS inline
 
     real_t Gs1, Gs2, Gs3;
     stiefel_Gs13(&Gs1, &Gs2, &Gs3, beta, X);
@@ -226,6 +229,7 @@ real_t newton_step(real_t X, real_t beta, real_t r0, real_t eta0, real_t zeta0, 
 
 struct bodies_t kepler_step(struct bodies_t ss, real_t M0, real_t dt)
 {
+#pragma HLS inline off
 #pragma HLS pipeline II = 1
 
     for (int i = 0; i < N_PLANETS; i++)

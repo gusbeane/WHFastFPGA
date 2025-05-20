@@ -11,6 +11,7 @@ real_t gravity_prefactor(real_t m, real_t dx, real_t dy, real_t dz)
 // Performs one full interaction step (scalar version)
 struct bodies_t interaction_step(struct bodies_t ss, real_t M0, real_t dt)
 {
+#pragma HLS inline off
 #pragma HLS pipeline II=1
     real_t c_val = R(10065.32);
 

@@ -337,10 +337,13 @@ void whfast_kernel(double *x_vec, double *y_vec, double *z_vec,
     // Call the main integration routine
     // This is where the actual integration happens
 
+    double dt_half1 = dt / 2.0;
+    double dt_half2 = dt - dt_half1;
+
     for (int i = 0; i < Nint; i++)
     {
         // Perform the jump step (first half)
-        whfast_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt / 2.0);
+        whfast_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt_half1);
 
         // Perform the interaction step
         whfast_interaction_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt);
@@ -358,7 +361,7 @@ void whfast_kernel(double *x_vec, double *y_vec, double *z_vec,
         // exit(0);
 
         // Perform the jump step (second half)
-        whfast_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt / 2.0);
+        whfast_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt_half2);
 
         // Perform the drift step
         whfast_drift_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, com, dt);

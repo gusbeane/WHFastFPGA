@@ -281,49 +281,49 @@ static inline double gravity_prefactor(double m, double dx, double dy, double dz
 void whfast_interaction_step(double *x_vec, double *y_vec, double *z_vec,
                              double *vx_vec, double *vy_vec, double *vz_vec,
                              double *m_vec, double dt)
-{    
-    // extract scalar GR prefactors from vector constants
-    union { __m512d v; double a[8]; } u1 = { kConsts->gr_prefac };
-    union { __m512d v; double a[8]; } u2 = { kConsts->gr_prefac2 };
-    double gr_prefac_s = u1.a[0];
-    double gr_prefac2_s = u2.a[0];
+{
+
     double star_dvx = 0.0, star_dvy = 0.0, star_dvz = 0.0;
-    for (int i = 0; i < N_PLANETS; ++i) {
+    for (int i = 0; i < N_PLANETS; ++i)
+    {
         double xi = x_vec[i], yi = y_vec[i], zi = z_vec[i];
         double vxi = vx_vec[i], vyi = vy_vec[i], vzi = vz_vec[i];
-        double r2 = xi*xi + yi*yi + zi*zi;
+        double r2 = xi * xi + yi * yi + zi * zi;
         double r4 = r2 * r2;
-        double invr4 = gr_prefac_s * dt / r4;
+        double invr4 = kConsts->gr_prefac[i] * dt / r4;
         double dvx_i = invr4 * xi;
         double dvy_i = invr4 * yi;
         double dvz_i = invr4 * zi;
         vxi -= dvx_i;
         vyi -= dvy_i;
         vzi -= dvz_i;
-        star_dvx += gr_prefac2_s * dvx_i;
-        star_dvy += gr_prefac2_s * dvy_i;
-        star_dvz += gr_prefac2_s * dvz_i;
-        for (int j = 0; j < N_PLANETS; ++j) {
-             if (i == j) continue;
-             double dx = xi - x_vec[j];
-             double dy = yi - y_vec[j];
-             double dz = zi - z_vec[j];
-             double pref = gravity_prefactor(m_vec[j], dx, dy, dz) * dt;
-             vxi -= pref * dx;
-             vyi -= pref * dy;
-             vzi -= pref * dz;
-         }
-         vx_vec[i] = vxi;
-         vy_vec[i] = vyi;
-         vz_vec[i] = vzi;
-     }
+        star_dvx += kConsts->gr_prefac2[i] * dvx_i;
+        star_dvy += kConsts->gr_prefac2[i] * dvy_i;
+        star_dvz += kConsts->gr_prefac2[i] * dvz_i;
+        for (int j = 0; j < N_PLANETS; ++j)
+        {
+            if (i == j)
+                continue;
+            double dx = xi - x_vec[j];
+            double dy = yi - y_vec[j];
+            double dz = zi - z_vec[j];
+            double pref = gravity_prefactor(m_vec[j], dx, dy, dz) * dt;
+            vxi -= pref * dx;
+            vyi -= pref * dy;
+            vzi -= pref * dz;
+        }
+        vx_vec[i] = vxi;
+        vy_vec[i] = vyi;
+        vz_vec[i] = vzi;
+    }
     // Apply back-reaction onto star to all planets
-    for (int i = 0; i < N_PLANETS; ++i) {
+    for (int i = 0; i < N_PLANETS; ++i)
+    {
         vx_vec[i] -= star_dvx;
         vy_vec[i] -= star_dvy;
         vz_vec[i] -= star_dvz;
     }
- }
+}
 
 void whfast_kernel(__m512d *x_vec, __m512d *y_vec, __m512d *z_vec,
                       __m512d *vx_vec, __m512d *vy_vec, __m512d *vz_vec,

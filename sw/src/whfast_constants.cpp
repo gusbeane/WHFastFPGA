@@ -16,41 +16,31 @@ static const double invfactorial[35] = {1., 1., 1./2., 1./6., 1./24., 1./120., 1
 static const Constants* kConsts_local = nullptr;
 const Constants* kConsts = nullptr;
 
-static Constants buildConstants(double M0, __m512d m_vec) {
+static Constants buildConstants(double M0, double *m_vec) {
     Constants c;
-    c.half = _mm512_set1_pd(0.5);
-    c.one = _mm512_add_pd(c.half, c.half);
-    c.two = _mm512_add_pd(c.one, c.one);
-    c.five = _mm512_set1_pd(5.);
-    c.sixteen = _mm512_set1_pd(16.);
-    c.twenty = _mm512_set1_pd(20.);
-    double M[8];
-    for (int i = 0; i < 8; i++){
-        M[i] = M0;
-    }
+    c.half = 0.5;
+    c.one = c.half + c.half;
+    c.two = c.one + c.one;
+    c.five = 5.;
+    c.sixteen = 16.;
+    c.twenty = 20.;
     c.M0 = M0;
-    c._M = _mm512_loadu_pd(M);
-
-    c.so1 = _mm512_set_epi64(1, 2, 3, 0, 6, 7, 4, 5);
-    c.so2 = _mm512_set_epi64(3, 2, 1, 0, 6, 5, 4, 7);
+    
     for (unsigned int i = 0; i < 35; i++){
-        c.invfactorial512[i] = _mm512_set1_pd(invfactorial[i]);
+        c.invfactorial512[i] = invfactorial[i];
     }
+
     // GR prefactors; example setup:
     double c_val = 10065.32;
-    double _gr_prefac[8] = {0};
-    double _gr_prefac2[8] = {0};
-    for (int p = 0; p < N_BODIES-1; p++){
-        _gr_prefac[p] = 6.*M0*M0/(c_val*c_val);
-        _gr_prefac2[p] = m_vec[p]/M0; // or any appropriate value from m_vec
+    for (std::size_t p = 0; p < N_PLANETS; p++){
+        c.gr_prefac[p] = 6.*M0*M0/(c_val*c_val);
+        c.gr_prefac2[p] = m_vec[p]/M0; // or any appropriate value from m_vec
     }
-    c.gr_prefac = _mm512_loadu_pd(_gr_prefac);
-    c.gr_prefac2 = _mm512_loadu_pd(_gr_prefac2);
 
     return c;
 }
 
-void initialize_constants(double M0, __m512d m_vec) {
+void initialize_constants(double M0, double *m_vec) {
     if (!kConsts_local) {
         // Build a static immutable constants once.
         static const Constants c = buildConstants(M0, m_vec);

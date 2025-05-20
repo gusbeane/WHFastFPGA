@@ -4,37 +4,18 @@
 #include <cmath>
 #include <limits>
 
-// Convert AVX512 vectors to double arrays
-#define CONVERT_PLANETS_AVX512_TO_DOUBLE() \
-do { \
-    _mm512_storeu_pd(x_vec_, *x_vec); \
-    _mm512_storeu_pd(y_vec_, *y_vec); \
-    _mm512_storeu_pd(z_vec_, *z_vec); \
-    _mm512_storeu_pd(vx_vec_, *vx_vec); \
-    _mm512_storeu_pd(vy_vec_, *vy_vec); \
-    _mm512_storeu_pd(vz_vec_, *vz_vec); \
-    _mm512_storeu_pd(m_vec_, m_vec); \
-} while(0)
-
-// Convert double arrays back to AVX512 vectors
-#define CONVERT_PLANETS_DOUBLE_TO_AVX512() \
-do { \
-    *x_vec = _mm512_loadu_pd(x_vec_); \
-    *y_vec = _mm512_loadu_pd(y_vec_); \
-    *z_vec = _mm512_loadu_pd(z_vec_); \
-    *vx_vec = _mm512_loadu_pd(vx_vec_); \
-    *vy_vec = _mm512_loadu_pd(vy_vec_); \
-    *vz_vec = _mm512_loadu_pd(vz_vec_); \
-    m_vec = _mm512_loadu_pd(m_vec_); \
-} while(0)
-
 // Scalar Stiefel function for Halley's method, returning Gs0, Gs1, Gs2, and Gs3
-inline void stiefel_Gs03(double* Gs0, double* Gs1, double* Gs2, double* Gs3, double beta, double X) {
+inline void stiefel_Gs03(double *Gs0, double *Gs1, double *Gs2, double *Gs3, double beta, double X)
+{
 #ifdef PRINT_UTILITY
-    if (beta < beta_min) beta_min = beta;
-    if (beta > beta_max) beta_max = beta;
-    if (X < X_min) X_min = X;
-    if (X > X_max) X_max = X;
+    if (beta < beta_min)
+        beta_min = beta;
+    if (beta > beta_max)
+        beta_max = beta;
+    if (X < X_min)
+        X_min = X;
+    if (X > X_max)
+        X_max = X;
 #endif // PRINT_UTILITY
 
     double X2 = X * X;
@@ -43,24 +24,25 @@ inline void stiefel_Gs03(double* Gs0, double* Gs1, double* Gs2, double* Gs3, dou
     // nmax = 11 as in the vectorized version
     const int nmax = 11;
     double invfact[12] = {
-        1.0, // 0!
-        1.0, // 1!
-        0.5, // 2!
-        0.16666666666666666, // 3!
-        0.041666666666666664, // 4!
-        0.008333333333333333, // 5!
-        0.001388888888888889, // 6!
-        0.0001984126984126984, // 7!
-        2.48015873015873e-05, // 8!
+        1.0,                    // 0!
+        1.0,                    // 1!
+        0.5,                    // 2!
+        0.16666666666666666,    // 3!
+        0.041666666666666664,   // 4!
+        0.008333333333333333,   // 5!
+        0.001388888888888889,   // 6!
+        0.0001984126984126984,  // 7!
+        2.48015873015873e-05,   // 8!
         2.7557319223985893e-06, // 9!
-        2.755731922398589e-07, // 10!
-        2.505210838544172e-08 // 11!
+        2.755731922398589e-07,  // 10!
+        2.505210838544172e-08   // 11!
     };
     *Gs3 = invfact[nmax];
-    *Gs2 = invfact[nmax-1];
-    for (int np = nmax-2; np >= 3; np -= 2) {
+    *Gs2 = invfact[nmax - 1];
+    for (int np = nmax - 2; np >= 3; np -= 2)
+    {
         *Gs3 = -z * (*Gs3) + invfact[np];
-        *Gs2 = -z * (*Gs2) + invfact[np-1];
+        *Gs2 = -z * (*Gs2) + invfact[np - 1];
     }
     *Gs0 = -z * (*Gs2) + 1.0;
     *Gs3 = (*Gs3) * X;
@@ -70,14 +52,21 @@ inline void stiefel_Gs03(double* Gs0, double* Gs1, double* Gs2, double* Gs3, dou
 }
 
 // Scalar Halley step function for Kepler iteration
-inline void halley_step(double* X, double beta, double r0, double eta0, double zeta0, double dt) {
+inline void halley_step(double *X, double beta, double r0, double eta0, double zeta0, double dt)
+{
 #ifdef PRINT_UTILITY
-    if (r0 < halley_r0_min) halley_r0_min = r0;
-    if (r0 > halley_r0_max) halley_r0_max = r0;
-    if (eta0 < halley_eta0_min) halley_eta0_min = eta0;
-    if (eta0 > halley_eta0_max) halley_eta0_max = eta0;
-    if (zeta0 < halley_zeta0_min) halley_zeta0_min = zeta0;
-    if (zeta0 > halley_zeta0_max) halley_zeta0_max = zeta0;
+    if (r0 < halley_r0_min)
+        halley_r0_min = r0;
+    if (r0 > halley_r0_max)
+        halley_r0_max = r0;
+    if (eta0 < halley_eta0_min)
+        halley_eta0_min = eta0;
+    if (eta0 > halley_eta0_max)
+        halley_eta0_max = eta0;
+    if (zeta0 < halley_zeta0_min)
+        halley_zeta0_min = zeta0;
+    if (zeta0 > halley_zeta0_max)
+        halley_zeta0_max = zeta0;
 #endif // PRINT_UTILITY
 
     double Gs0, Gs1, Gs2, Gs3;
@@ -94,13 +83,18 @@ inline void halley_step(double* X, double beta, double r0, double eta0, double z
 }
 
 // Scalar Stiefel function for Newton's method, returning Gs1, Gs2, and Gs3
-inline void stiefel_Gs13(double* Gs1, double* Gs2, double* Gs3, double beta, double X) {
-    #ifdef PRINT_UTILITY
-    if (beta < beta_min) beta_min = beta;
-    if (beta > beta_max) beta_max = beta;
-    if (X < X_min) X_min = X;
-    if (X > X_max) X_max = X;
-    #endif // PRINT_UTILITY
+inline void stiefel_Gs13(double *Gs1, double *Gs2, double *Gs3, double beta, double X)
+{
+#ifdef PRINT_UTILITY
+    if (beta < beta_min)
+        beta_min = beta;
+    if (beta > beta_max)
+        beta_max = beta;
+    if (X < X_min)
+        X_min = X;
+    if (X > X_max)
+        X_max = X;
+#endif // PRINT_UTILITY
 
     double X2 = X * X;
     double z = X2 * beta;
@@ -108,32 +102,33 @@ inline void stiefel_Gs13(double* Gs1, double* Gs2, double* Gs3, double beta, dou
     // nmax = 19 as in the vectorized version
     const int nmax = 19;
     double invfact[20] = {
-        1.0, // 0!
-        1.0, // 1!
-        0.5, // 2!
-        0.16666666666666666, // 3!
-        0.041666666666666664, // 4!
-        0.008333333333333333, // 5!
-        0.001388888888888889, // 6!
-        0.0001984126984126984, // 7!
-        2.48015873015873e-05, // 8!
+        1.0,                    // 0!
+        1.0,                    // 1!
+        0.5,                    // 2!
+        0.16666666666666666,    // 3!
+        0.041666666666666664,   // 4!
+        0.008333333333333333,   // 5!
+        0.001388888888888889,   // 6!
+        0.0001984126984126984,  // 7!
+        2.48015873015873e-05,   // 8!
         2.7557319223985893e-06, // 9!
-        2.755731922398589e-07, // 10!
-        2.505210838544172e-08, // 11!
-        2.08767569878681e-09, // 12!
+        2.755731922398589e-07,  // 10!
+        2.505210838544172e-08,  // 11!
+        2.08767569878681e-09,   // 12!
         1.6059043836821613e-10, // 13!
         1.1470745597729725e-11, // 14!
-        7.647163731819816e-13, // 15!
-        4.779477332387385e-14, // 16!
+        7.647163731819816e-13,  // 15!
+        4.779477332387385e-14,  // 16!
         2.8114572543455206e-15, // 17!
         1.5619206968586225e-16, // 18!
-        8.22063524662433e-18 // 19!
+        8.22063524662433e-18    // 19!
     };
     *Gs3 = invfact[nmax];
-    *Gs2 = invfact[nmax-1];
-    for (int np = nmax-2; np >= 3; np -= 2) {
+    *Gs2 = invfact[nmax - 1];
+    for (int np = nmax - 2; np >= 3; np -= 2)
+    {
         *Gs3 = -z * (*Gs3) + invfact[np];
-        *Gs2 = -z * (*Gs2) + invfact[np-1];
+        *Gs2 = -z * (*Gs2) + invfact[np - 1];
     }
     *Gs3 = (*Gs3) * X;
     *Gs1 = -z * (*Gs3) + X;
@@ -142,14 +137,21 @@ inline void stiefel_Gs13(double* Gs1, double* Gs2, double* Gs3, double beta, dou
 }
 
 // Scalar Newton step function for Kepler iteration
-inline void newton_step(double* X, double beta, double r0, double eta0, double zeta0, double dt) {
+inline void newton_step(double *X, double beta, double r0, double eta0, double zeta0, double dt)
+{
 #ifdef PRINT_UTILITY
-    if (r0 < newton_r0_min) newton_r0_min = r0;
-    if (r0 > newton_r0_max) newton_r0_max = r0;
-    if (eta0 < newton_eta0_min) newton_eta0_min = eta0;
-    if (eta0 > newton_eta0_max) newton_eta0_max = eta0;
-    if (zeta0 < newton_zeta0_min) newton_zeta0_min = zeta0;
-    if (zeta0 > newton_zeta0_max) newton_zeta0_max = zeta0;
+    if (r0 < newton_r0_min)
+        newton_r0_min = r0;
+    if (r0 > newton_r0_max)
+        newton_r0_max = r0;
+    if (eta0 < newton_eta0_min)
+        newton_eta0_min = eta0;
+    if (eta0 > newton_eta0_max)
+        newton_eta0_max = eta0;
+    if (zeta0 < newton_zeta0_min)
+        newton_zeta0_min = zeta0;
+    if (zeta0 > newton_zeta0_max)
+        newton_zeta0_max = zeta0;
 #endif // PRINT_UTILITY
 
     double Gs1, Gs2, Gs3;
@@ -160,35 +162,35 @@ inline void newton_step(double* X, double beta, double r0, double eta0, double z
     *X = ri * (*X);
 }
 
-void whfast_kepler_step(double *x_vec,  double *y_vec,  double *z_vec,
-                          double *vx_vec, double *vy_vec, double *vz_vec, double dt)
+void whfast_kepler_step(double *x_vec, double *y_vec, double *z_vec,
+                        double *vx_vec, double *vy_vec, double *vz_vec, double dt)
 {
-    for(int i=0; i<N_PLANETS; i++)
-    {   
+    for (int i = 0; i < N_PLANETS; i++)
+    {
         double r2, r0, r01, v2;
         double beta, eta0, zeta0;
         double Gs1, Gs2, Gs3, eta0Gs1zeta0Gs2, ri;
-        r2 = x_vec[i]*x_vec[i] + y_vec[i]*y_vec[i] + z_vec[i]*z_vec[i];
+        r2 = x_vec[i] * x_vec[i] + y_vec[i] * y_vec[i] + z_vec[i] * z_vec[i];
         r0 = sqrt(r2);
-        r01 = 1.0/r0;
+        r01 = 1.0 / r0;
 
-        v2 = vx_vec[i]*vx_vec[i] + vy_vec[i]*vy_vec[i] + vz_vec[i]*vz_vec[i];
-        beta = 2.0*kConsts->M0*r01 - v2;
+        v2 = vx_vec[i] * vx_vec[i] + vy_vec[i] * vy_vec[i] + vz_vec[i] * vz_vec[i];
+        beta = 2.0 * kConsts->M0 * r01 - v2;
 
-        eta0 = x_vec[i]*vx_vec[i] + y_vec[i]*vy_vec[i] + z_vec[i]*vz_vec[i];
-        zeta0 = -beta*r0 + kConsts->M0;
-        
+        eta0 = x_vec[i] * vx_vec[i] + y_vec[i] * vy_vec[i] + z_vec[i] * vz_vec[i];
+        zeta0 = -beta * r0 + kConsts->M0;
+
         // Initial guess
-        double dtr0i = dt*r01;
-        double X = dtr0i*eta0;
-        X = -0.5*X*r0 + 1.0;
-        X = dtr0i*X;
+        double dtr0i = dt * r01;
+        double X = dtr0i * eta0;
+        X = -0.5 * X * r0 + 1.0;
+        X = dtr0i * X;
 
         // Iterations
         halley_step(&X, beta, r0, eta0, zeta0, dt);
         halley_step(&X, beta, r0, eta0, zeta0, dt);
         newton_step(&X, beta, r0, eta0, zeta0, dt);
-        
+
         stiefel_Gs13(&Gs1, &Gs2, &Gs3, beta, X);
         eta0Gs1zeta0Gs2 = eta0 * Gs1 + zeta0 * Gs2;
         ri = 1.0 / (r0 + eta0Gs1zeta0Gs2);
@@ -205,22 +207,22 @@ void whfast_kepler_step(double *x_vec,  double *y_vec,  double *z_vec,
         double ngd = kConsts->M0 * Gs2; // negative gd
         ngd = ngd * ri;
 
-        double nx = -nf*x_vec[i] + x_vec[i];
-        nx = nx + g*vx_vec[i];
+        double nx = -nf * x_vec[i] + x_vec[i];
+        nx = nx + g * vx_vec[i];
 
-        double ny = -nf*y_vec[i] + y_vec[i];
-        ny = ny + g*vy_vec[i];
+        double ny = -nf * y_vec[i] + y_vec[i];
+        ny = ny + g * vy_vec[i];
 
-        double nz = -nf*z_vec[i] + z_vec[i];
-        nz = nz + g*vz_vec[i];
+        double nz = -nf * z_vec[i] + z_vec[i];
+        nz = nz + g * vz_vec[i];
 
-        vx_vec[i] = -ngd*vx_vec[i] + vx_vec[i];
-        vx_vec[i] = -nfd*x_vec[i] + vx_vec[i];
-        vy_vec[i] = -ngd*vy_vec[i] + vy_vec[i];
-        vy_vec[i] = -nfd*y_vec[i] + vy_vec[i];
-        vz_vec[i] = -ngd*vz_vec[i] + vz_vec[i];
-        vz_vec[i] = -nfd*z_vec[i] + vz_vec[i];
-        
+        vx_vec[i] = -ngd * vx_vec[i] + vx_vec[i];
+        vx_vec[i] = -nfd * x_vec[i] + vx_vec[i];
+        vy_vec[i] = -ngd * vy_vec[i] + vy_vec[i];
+        vy_vec[i] = -nfd * y_vec[i] + vy_vec[i];
+        vz_vec[i] = -ngd * vz_vec[i] + vz_vec[i];
+        vz_vec[i] = -nfd * z_vec[i] + vz_vec[i];
+
         x_vec[i] = nx;
         y_vec[i] = ny;
         z_vec[i] = nz;
@@ -229,18 +231,18 @@ void whfast_kepler_step(double *x_vec,  double *y_vec,  double *z_vec,
 
 void whfast_com_step(Body *com, double dt)
 {
-    for(int i=0; i<3; i++)
+    for (int i = 0; i < 3; i++)
         com->pos[i] += dt * com->vel[i];
 }
 
-void whfast_drift_step(double *x_vec,  double *y_vec,  double *z_vec,
-    double *vx_vec, double *vy_vec, double *vz_vec, Body *com, double dt)
+void whfast_drift_step(double *x_vec, double *y_vec, double *z_vec,
+                       double *vx_vec, double *vy_vec, double *vz_vec, Body *com, double dt)
 {
-// We first do the kepler step, then the com step.
+    // We first do the kepler step, then the com step.
 
     whfast_kepler_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, dt);
 
-whfast_com_step(com, dt);
+    whfast_com_step(com, dt);
 }
 
 // Performs one complete jump step (scalar version)
@@ -266,15 +268,17 @@ void whfast_jump_step(double *x_vec, double *y_vec, double *z_vec,
 }
 
 // Scalar helper functions for the interaction step
-static inline double gravity_prefactor_one(double dx, double dy, double dz) {
-    double r2 = dx*dx + dy*dy + dz*dz;
+static inline double gravity_prefactor_one(double dx, double dy, double dz)
+{
+    double r2 = dx * dx + dy * dy + dz * dz;
     double r = sqrt(r2);
-    return 1.0/(r2*r);
+    return 1.0 / (r2 * r);
 }
-static inline double gravity_prefactor(double m, double dx, double dy, double dz) {
-    double r2 = dx*dx + dy*dy + dz*dz;
+static inline double gravity_prefactor(double m, double dx, double dy, double dz)
+{
+    double r2 = dx * dx + dy * dy + dz * dz;
     double r = sqrt(r2);
-    return m/(r2*r);
+    return m / (r2 * r);
 }
 
 // Performs one full interaction step (scalar version)
@@ -325,54 +329,42 @@ void whfast_interaction_step(double *x_vec, double *y_vec, double *z_vec,
     }
 }
 
-void whfast_kernel(__m512d *x_vec, __m512d *y_vec, __m512d *z_vec,
-                      __m512d *vx_vec, __m512d *vy_vec, __m512d *vz_vec,
-                      __m512d m_vec, Body *com, double dt, long Nint)
+void whfast_kernel(double *x_vec, double *y_vec, double *z_vec,
+                   double *vx_vec, double *vy_vec, double *vz_vec,
+                   double *m_vec, Body *com, double dt, long Nint)
 {
     // Call the main integration routine
     // This is where the actual integration happens
 
-    // Temporary double arrays
-    double x_vec_[N_PLANETS], y_vec_[N_PLANETS], z_vec_[N_PLANETS];
-    double vx_vec_[N_PLANETS], vy_vec_[N_PLANETS], vz_vec_[N_PLANETS];
-    double m_vec_[N_PLANETS];
-
     // Perform the initial half-drift step
-    CONVERT_PLANETS_AVX512_TO_DOUBLE();
-    whfast_drift_step(x_vec_, y_vec_, z_vec_, vx_vec_, vy_vec_, vz_vec_, com, dt / 2.0);
+    whfast_drift_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, com, dt / 2.0);
 
     for (int i = 0; i < Nint - 1; i++)
     {
         // Perform the jump step (first half)
-        whfast_jump_step(x_vec_, y_vec_, z_vec_, vx_vec_, vy_vec_, vz_vec_, m_vec_, dt / 2.0);
+        whfast_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt / 2.0);
 
         // Perform the interaction step
-        // CONVERT_PLANETS_DOUBLE_TO_AVX512();
-        whfast_interaction_step(x_vec_, y_vec_, z_vec_, vx_vec_, vy_vec_, vz_vec_, m_vec_, dt);
-        // CONVERT_PLANETS_AVX512_TO_DOUBLE();
+        whfast_interaction_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt);
 
         // Perform the jump step (second half)
-    whfast_jump_step(x_vec_, y_vec_, z_vec_, vx_vec_, vy_vec_, vz_vec_, m_vec_, dt / 2.0);
+        whfast_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt / 2.0);
 
-    // Perform the drift step
-    whfast_drift_step(x_vec_, y_vec_, z_vec_, vx_vec_, vy_vec_, vz_vec_, com, dt);
+        // Perform the drift step
+        whfast_drift_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, com, dt);
     }
 
     // Final iteration happens outside loop to avoid branching
 
     // Perform the jump step (first half)
-    whfast_jump_step(x_vec_, y_vec_, z_vec_, vx_vec_, vy_vec_, vz_vec_, m_vec_, dt / 2.0);
+    whfast_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt / 2.0);
 
     // Perform the interaction step
-    // CONVERT_PLANETS_DOUBLE_TO_AVX512();
-    whfast_interaction_step(x_vec_, y_vec_, z_vec_, vx_vec_, vy_vec_, vz_vec_, m_vec_, dt);
-    // CONVERT_PLANETS_AVX512_TO_DOUBLE();
+    whfast_interaction_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt);
 
     // Perform the jump step (second half)
-    whfast_jump_step(x_vec_, y_vec_, z_vec_, vx_vec_, vy_vec_, vz_vec_, m_vec_, dt / 2.0);
+    whfast_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt / 2.0);
 
     // Perform the final half-drift step
-    whfast_drift_step(x_vec_, y_vec_, z_vec_, vx_vec_, vy_vec_, vz_vec_, com, dt / 2.0);
-    CONVERT_PLANETS_DOUBLE_TO_AVX512();
-
+    whfast_drift_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, com, dt / 2.0);
 }

@@ -14,31 +14,6 @@
 #include "whfast_constants.h"
 #include "util.h"
 
-#define CONVERT_PLANETS_AVX512_TO_DOUBLE() \
-    do                                     \
-    {                                      \
-        _mm512_storeu_pd(x_vec_, x_vec);   \
-        _mm512_storeu_pd(y_vec_, y_vec);   \
-        _mm512_storeu_pd(z_vec_, z_vec);   \
-        _mm512_storeu_pd(vx_vec_, vx_vec); \
-        _mm512_storeu_pd(vy_vec_, vy_vec); \
-        _mm512_storeu_pd(vz_vec_, vz_vec); \
-        _mm512_storeu_pd(m_vec_, m_vec);   \
-    } while (0)
-
-// Convert double arrays back to AVX512 vectors
-#define CONVERT_PLANETS_DOUBLE_TO_AVX512()  \
-    do                                      \
-    {                                       \
-        *x_vec = _mm512_loadu_pd(x_vec_);   \
-        *y_vec = _mm512_loadu_pd(y_vec_);   \
-        *z_vec = _mm512_loadu_pd(z_vec_);   \
-        *vx_vec = _mm512_loadu_pd(vx_vec_); \
-        *vy_vec = _mm512_loadu_pd(vy_vec_); \
-        *vz_vec = _mm512_loadu_pd(vz_vec_); \
-        m_vec = _mm512_loadu_pd(m_vec_);    \
-    } while (0)
-
 // Helper to get hex string of a double
 std::string double_to_hex(double d) {
     union { double d; uint64_t u; } u;
@@ -175,20 +150,16 @@ void gen_kepler_jump_step_csv(const std::string &filename_kepler, const std::str
     std::array<Body, N_BODIES> solarsystem = solarsystem_ics;
     move_to_center_of_mass(solarsystem);
 
-    __m512d x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec;
+    double x_vec[N_PLANETS], y_vec[N_PLANETS], z_vec[N_PLANETS];
+    double vx_vec[N_PLANETS], vy_vec[N_PLANETS], vz_vec[N_PLANETS];
+    double m_vec[N_PLANETS];
     Body com;
     double dt = 5.0 / 365.25 * 2 * M_PI / 2.0; // 5 days in radians
 
-    inertial_to_democraticheliocentric_posvel(solarsystem, &com, &x_vec, &y_vec, &z_vec,
-                                              &vx_vec, &vy_vec, &vz_vec, &m_vec);
+    inertial_to_democraticheliocentric_posvel(solarsystem, &com, x_vec, y_vec, z_vec,
+                                              vx_vec, vy_vec, vz_vec, m_vec);
 
     initialize_constants(solarsystem[0].mass, m_vec);
-
-    double x_vec_[N_PLANETS], y_vec_[N_PLANETS], z_vec_[N_PLANETS];
-    double vx_vec_[N_PLANETS], vy_vec_[N_PLANETS], vz_vec_[N_PLANETS];
-    double m_vec_[N_PLANETS];
-
-    CONVERT_PLANETS_AVX512_TO_DOUBLE();
 
     // Print initial conditions to file
     file_kepler << "x,y,z,vx,vy,vz\n";
@@ -196,25 +167,25 @@ void gen_kepler_jump_step_csv(const std::string &filename_kepler, const std::str
     file_kepler << "M0=" << double_to_hex(kConsts->M0) << "\n";
     for (int i = 0; i < N_PLANETS; ++i)
     {
-        file_kepler << double_to_hex(x_vec_[i]) << ","
-             << double_to_hex(y_vec_[i]) << ","
-             << double_to_hex(z_vec_[i]) << ","
-             << double_to_hex(vx_vec_[i]) << ","
-             << double_to_hex(vy_vec_[i]) << ","
-             << double_to_hex(vz_vec_[i]) << "\n";
+        file_kepler << double_to_hex(x_vec[i]) << ","
+             << double_to_hex(y_vec[i]) << ","
+             << double_to_hex(z_vec[i]) << ","
+             << double_to_hex(vx_vec[i]) << ","
+             << double_to_hex(vy_vec[i]) << ","
+             << double_to_hex(vz_vec[i]) << "\n";
     }
 
-    whfast_kepler_step(x_vec_, y_vec_, z_vec_, vx_vec_, vy_vec_, vz_vec_, dt);
+    whfast_kepler_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, dt);
 
     // Print results to file_kepler
     for (int i = 0; i < N_PLANETS; ++i)
     {
-        file_kepler << double_to_hex(x_vec_[i]) << ","
-             << double_to_hex(y_vec_[i]) << ","
-             << double_to_hex(z_vec_[i]) << ","
-             << double_to_hex(vx_vec_[i]) << ","
-             << double_to_hex(vy_vec_[i]) << ","
-             << double_to_hex(vz_vec_[i]) << "\n";
+        file_kepler << double_to_hex(x_vec[i]) << ","
+             << double_to_hex(y_vec[i]) << ","
+             << double_to_hex(z_vec[i]) << ","
+             << double_to_hex(vx_vec[i]) << ","
+             << double_to_hex(vy_vec[i]) << ","
+             << double_to_hex(vz_vec[i]) << "\n";
     }
 
     file_kepler.close();
@@ -225,27 +196,27 @@ void gen_kepler_jump_step_csv(const std::string &filename_kepler, const std::str
     file_jump << "M0=" << double_to_hex(kConsts->M0) << "\n";
     for (int i = 0; i < N_PLANETS; ++i)
     {
-        file_jump << double_to_hex(x_vec_[i]) << ","
-             << double_to_hex(y_vec_[i]) << ","
-             << double_to_hex(z_vec_[i]) << ","
-             << double_to_hex(vx_vec_[i]) << ","
-             << double_to_hex(vy_vec_[i]) << ","
-             << double_to_hex(vz_vec_[i]) << ","
-             << double_to_hex(m_vec_[i]) << "\n";
+        file_jump << double_to_hex(x_vec[i]) << ","
+             << double_to_hex(y_vec[i]) << ","
+             << double_to_hex(z_vec[i]) << ","
+             << double_to_hex(vx_vec[i]) << ","
+             << double_to_hex(vy_vec[i]) << ","
+             << double_to_hex(vz_vec[i]) << ","
+             << double_to_hex(m_vec[i]) << "\n";
     }
 
-    whfast_jump_step(x_vec_, y_vec_, z_vec_, vx_vec_, vy_vec_, vz_vec_, m_vec_, dt);
+    whfast_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt);
 
     // Print results to file_jump
     for (int i = 0; i < N_PLANETS; ++i)
     {
-        file_jump << double_to_hex(x_vec_[i]) << ","
-             << double_to_hex(y_vec_[i]) << ","
-             << double_to_hex(z_vec_[i]) << ","
-             << double_to_hex(vx_vec_[i]) << ","
-             << double_to_hex(vy_vec_[i]) << ","
-             << double_to_hex(vz_vec_[i]) << ","
-             << double_to_hex(m_vec_[i]) << "\n";
+        file_jump << double_to_hex(x_vec[i]) << ","
+             << double_to_hex(y_vec[i]) << ","
+             << double_to_hex(z_vec[i]) << ","
+             << double_to_hex(vx_vec[i]) << ","
+             << double_to_hex(vy_vec[i]) << ","
+             << double_to_hex(vz_vec[i]) << ","
+             << double_to_hex(m_vec[i]) << "\n";
     }
 
     file_jump.close();
@@ -381,6 +352,7 @@ int main() {
     // std::cout << "Energy difference ( 20 kyr - ics): " << (energy_2e4 - energy_ics)/energy_ics << std::endl;
     // std::cout << "Energy difference ( 40 kyr - ics): " << (energy_4e4 - energy_ics)/energy_ics << std::endl;
     // std::cout << "Energy difference (100 kyr - ics): " << (energy_1e5 - energy_ics)/energy_ics << std::endl;
+    
 
 
     // Generate Stiefel function golden CSVs

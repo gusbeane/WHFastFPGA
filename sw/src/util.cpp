@@ -42,9 +42,9 @@ void move_to_center_of_mass(std::array<Body, N_BODIES> &bodies)
 
 // Transforms positions and velocities from barycentric inertial to democratic heliocentric coordinates
 void inertial_to_democraticheliocentric_posvel(std::array<Body, N_BODIES> &bodies, Body *com,
-                                               __m512d *x_vec, __m512d *y_vec, __m512d *z_vec,
-                                               __m512d *vx_vec, __m512d *vy_vec, __m512d *vz_vec,
-                                               __m512d *m_vec)
+                                               double *x_vec, double *y_vec, double *z_vec,
+                                               double *vx_vec, double *vy_vec, double *vz_vec,
+                                               double *m_vec)
 {
     // Assume bodies[0] is the central star
 
@@ -88,69 +88,45 @@ void inertial_to_democraticheliocentric_posvel(std::array<Body, N_BODIES> &bodie
         }
     }
 
-    *m_vec = _mm512_setr_pd(
-        bodies[1].mass, bodies[2].mass, bodies[3].mass, bodies[4].mass,
-        bodies[5].mass, bodies[6].mass, bodies[7].mass, bodies[8].mass);
-    *x_vec = _mm512_setr_pd(
-        bodies[1].pos[0], bodies[2].pos[0], bodies[3].pos[0], bodies[4].pos[0],
-        bodies[5].pos[0], bodies[6].pos[0], bodies[7].pos[0], bodies[8].pos[0]);
-    *y_vec = _mm512_setr_pd(
-        bodies[1].pos[1], bodies[2].pos[1], bodies[3].pos[1], bodies[4].pos[1],
-        bodies[5].pos[1], bodies[6].pos[1], bodies[7].pos[1], bodies[8].pos[1]);
-    *z_vec = _mm512_setr_pd(
-        bodies[1].pos[2], bodies[2].pos[2], bodies[3].pos[2], bodies[4].pos[2],
-        bodies[5].pos[2], bodies[6].pos[2], bodies[7].pos[2], bodies[8].pos[2]);
-    *vx_vec = _mm512_setr_pd(
-        bodies[1].vel[0], bodies[2].vel[0], bodies[3].vel[0], bodies[4].vel[0],
-        bodies[5].vel[0], bodies[6].vel[0], bodies[7].vel[0], bodies[8].vel[0]);
-    *vy_vec = _mm512_setr_pd(
-        bodies[1].vel[1], bodies[2].vel[1], bodies[3].vel[1], bodies[4].vel[1],
-        bodies[5].vel[1], bodies[6].vel[1], bodies[7].vel[1], bodies[8].vel[1]);
-    *vz_vec = _mm512_setr_pd(
-        bodies[1].vel[2], bodies[2].vel[2], bodies[3].vel[2], bodies[4].vel[2],
-        bodies[5].vel[2], bodies[6].vel[2], bodies[7].vel[2], bodies[8].vel[2]);
+    for(std::size_t i=0; i<N_BODIES-1; i++)
+    {
+        m_vec[i] = bodies[i+1].mass;
+        x_vec[i] = bodies[i+1].pos[0];
+        y_vec[i] = bodies[i+1].pos[1];
+        z_vec[i] = bodies[i+1].pos[2];
+        vx_vec[i] = bodies[i+1].vel[0];
+        vy_vec[i] = bodies[i+1].vel[1];
+        vz_vec[i] = bodies[i+1].vel[2];
+    }
 }
 
 void democraticheliocentric_to_inertial_posvel(std::array<Body, N_BODIES> &bodies, Body *com,
-                                               __m512d x_vec, __m512d y_vec, __m512d z_vec,
-                                               __m512d vx_vec, __m512d vy_vec, __m512d vz_vec,
-                                               __m512d m_vec)
+                                                double *x_vec,  double *y_vec,  double *z_vec,
+                                                double *vx_vec,  double *vy_vec,  double *vz_vec,
+                                                double *m_vec)
 {
-    // First store into normal arrays
-    double x[N_BODIES - 1], y[N_BODIES - 1], z[N_BODIES - 1];
-    double vx[N_BODIES - 1], vy[N_BODIES - 1], vz[N_BODIES - 1];
-    double m[N_BODIES - 1];
-    _mm512_storeu_pd(x, x_vec);
-    _mm512_storeu_pd(y, y_vec);
-    _mm512_storeu_pd(z, z_vec);
-    _mm512_storeu_pd(vx, vx_vec);
-    _mm512_storeu_pd(vy, vy_vec);
-    _mm512_storeu_pd(vz, vz_vec);
-    _mm512_storeu_pd(m, m_vec);
-
     // Compute center of mass of planets
     struct Body com_planets = {0};
-    for (int i = 0; i < N_BODIES - 1; i++)
+    for (std::size_t i = 0; i < N_BODIES - 1; i++)
     {
-        com_planets.mass += m[i];
-        com_planets.pos[0] += m[i] * x[i];
-        com_planets.pos[1] += m[i] * y[i];
-        com_planets.pos[2] += m[i] * z[i];
-        com_planets.vel[0] += m[i] * vx[i];
-        com_planets.vel[1] += m[i] * vy[i];
-        com_planets.vel[2] += m[i] * vz[i];
+        com_planets.mass += m_vec[i];
+        com_planets.pos[0] += m_vec[i] * x_vec[i];
+        com_planets.pos[1] += m_vec[i] * y_vec[i];
+        com_planets.pos[2] += m_vec[i] * z_vec[i];
+        com_planets.vel[0] += m_vec[i] * vx_vec[i];
+        com_planets.vel[1] += m_vec[i] * vy_vec[i];
+        com_planets.vel[2] += m_vec[i] * vz_vec[i];
 
         // Add com vel to set bodies velocities
-        bodies[i + 1].vel[0] = vx[i] + com->vel[0];
-        bodies[i + 1].vel[1] = vy[i] + com->vel[1];
-        bodies[i + 1].vel[2] = vz[i] + com->vel[2];
+        bodies[i + 1].vel[0] = vx_vec[i] + com->vel[0];
+        bodies[i + 1].vel[1] = vy_vec[i] + com->vel[1];
+        bodies[i + 1].vel[2] = vz_vec[i] + com->vel[2];
     }
 
-    for (int i = 0; i < 3; ++i)
+    for (std::size_t i = 0; i < 3; ++i)
     {
         // We divide by total mass of the system
         com_planets.pos[i] /= com->mass;
-        // com_planets.vel[i] /= com->mass;
     }
 
     // Set solar position and velocity
@@ -162,11 +138,11 @@ void democraticheliocentric_to_inertial_posvel(std::array<Body, N_BODIES> &bodie
     bodies[0].vel[2] = com->vel[2] - com_planets.vel[2];
 
     // Set planet positions
-    for (int i = 0; i < N_BODIES - 1; i++)
+    for (std::size_t i = 0; i < N_BODIES - 1; i++)
     {
-        bodies[i + 1].pos[0] = x[i] + bodies[0].pos[0];
-        bodies[i + 1].pos[1] = y[i] + bodies[0].pos[1];
-        bodies[i + 1].pos[2] = z[i] + bodies[0].pos[2];
+        bodies[i + 1].pos[0] = x_vec[i] + bodies[0].pos[0];
+        bodies[i + 1].pos[1] = y_vec[i] + bodies[0].pos[1];
+        bodies[i + 1].pos[2] = z_vec[i] + bodies[0].pos[2];
     }
 
     return;

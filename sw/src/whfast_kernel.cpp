@@ -4,9 +4,6 @@
 #include <cmath>
 #include <limits>
 #include <string>
-#include <iomanip>
-#include <iostream>
-#include <sstream>
 
 // Scalar Stiefel function for Halley's method, returning Gs0, Gs1, Gs2, and Gs3
 inline void stiefel_Gs03(double *Gs0, double *Gs1, double *Gs2, double *Gs3, double beta, double X)
@@ -331,15 +328,6 @@ void whfast_interaction_step(double *x_vec, double *y_vec, double *z_vec,
         vy_vec[i] -= star_dvy;
         vz_vec[i] -= star_dvz;
     }
-}
-
-// Helper to get hex string of a double
-std::string double_to_hex(double d) {
-    union { double d; uint64_t u; } u;
-    u.d = d;
-    std::ostringstream oss;
-    oss << std::hex << std::setw(16) << std::setfill('0') << u.u;
-    return oss.str();
 }
 
 void whfast_kernel(double *x_vec, double *y_vec, double *z_vec,

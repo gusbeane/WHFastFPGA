@@ -4,6 +4,15 @@
 #include <immintrin.h>
 #include "util.h"
 
+// Helper to get hex string of a double
+std::string double_to_hex(double d) {
+    union { double d; uint64_t u; } u;
+    u.d = d;
+    std::ostringstream oss;
+    oss << std::hex << std::setw(16) << std::setfill('0') << u.u;
+    return oss.str();
+}
+
 struct Body compute_com(std::array<Body, N_BODIES> &bodies)
 {
     // This is defined in a weird way just to replicate the

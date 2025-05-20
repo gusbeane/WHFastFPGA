@@ -14,15 +14,6 @@
 #include "whfast_constants.h"
 #include "util.h"
 
-// Helper to get hex string of a double
-std::string double_to_hex(double d) {
-    union { double d; uint64_t u; } u;
-    u.d = d;
-    std::ostringstream oss;
-    oss << std::hex << std::setw(16) << std::setfill('0') << u.u;
-    return oss.str();
-}
-
 // Initial conditions copied from main.cpp
 constexpr std::array<Body, N_BODIES> solarsystem_ics = {
     Body{{-0.008816286905115728, -0.0010954664916791675, 0.0002143249385447027},
@@ -141,11 +132,10 @@ double gen_golden(double tmax_inyr, double dt, const std::string& filename)
     return compute_energy(solarsystem, com);
 }
 
-void gen_kepler_jump_step_csv(const std::string &filename_kepler, const std::string &filename_jump)
+void gen_integrate_step_csv(const std::string &filename)
 {
-    std::ofstream file_kepler("golden/" + filename_kepler);
-    std::ofstream file_jump("golden/" + filename_jump);
-    std::cout << "Generating:" << filename_kepler << " and " << filename_jump << "... ";
+    std::ofstream file("golden/" + filename);
+    std::cout << "Generating:" << filename << "... ";
     // Generate 100 yr integration
     std::array<Body, N_BODIES> solarsystem = solarsystem_ics;
     move_to_center_of_mass(solarsystem);
@@ -154,7 +144,8 @@ void gen_kepler_jump_step_csv(const std::string &filename_kepler, const std::str
     double vx_vec[N_PLANETS], vy_vec[N_PLANETS], vz_vec[N_PLANETS];
     double m_vec[N_PLANETS];
     Body com;
-    double dt = 5.0 / 365.25 * 2 * M_PI / 2.0; // 5 days in radians
+    double dt = 5.0 / 365.25 * 2 * M_PI; // 5 days in radians
+    double dt_half = dt / 2.0;
 
     inertial_to_democraticheliocentric_posvel(solarsystem, &com, x_vec, y_vec, z_vec,
                                               vx_vec, vy_vec, vz_vec, m_vec);
@@ -162,41 +153,27 @@ void gen_kepler_jump_step_csv(const std::string &filename_kepler, const std::str
     initialize_constants(solarsystem[0].mass, m_vec);
 
     // Print initial conditions to file
-    file_kepler << "x,y,z,vx,vy,vz\n";
-    file_kepler << "dt=" << double_to_hex(dt) << "\n";
-    file_kepler << "M0=" << double_to_hex(kConsts->M0) << "\n";
+    file << "x,y,z,vx,vy,vz,m\n";
+    file << "dt=" << double_to_hex(dt) << "\n";
+    file << "dt_half=" << double_to_hex(dt_half) << "\n";
+    file << "M0=" << double_to_hex(kConsts->M0) << "\n";
     for (int i = 0; i < N_PLANETS; ++i)
     {
-        file_kepler << double_to_hex(x_vec[i]) << ","
+        file << double_to_hex(x_vec[i]) << ","
              << double_to_hex(y_vec[i]) << ","
              << double_to_hex(z_vec[i]) << ","
              << double_to_hex(vx_vec[i]) << ","
              << double_to_hex(vy_vec[i]) << ","
-             << double_to_hex(vz_vec[i]) << "\n";
+             << double_to_hex(vz_vec[i]) << ","
+             << double_to_hex(m_vec[i]) << "\n";
     }
 
-    whfast_kepler_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, dt);
+    whfast_kepler_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, dt_half);
 
     // Print results to file_kepler
     for (int i = 0; i < N_PLANETS; ++i)
     {
-        file_kepler << double_to_hex(x_vec[i]) << ","
-             << double_to_hex(y_vec[i]) << ","
-             << double_to_hex(z_vec[i]) << ","
-             << double_to_hex(vx_vec[i]) << ","
-             << double_to_hex(vy_vec[i]) << ","
-             << double_to_hex(vz_vec[i]) << "\n";
-    }
-
-    file_kepler.close();
-
-    // Print initial conditions to file
-    file_jump << "x,y,z,vx,vy,vz,m\n";
-    file_jump << "dt=" << double_to_hex(dt) << "\n";
-    file_jump << "M0=" << double_to_hex(kConsts->M0) << "\n";
-    for (int i = 0; i < N_PLANETS; ++i)
-    {
-        file_jump << double_to_hex(x_vec[i]) << ","
+        file << double_to_hex(x_vec[i]) << ","
              << double_to_hex(y_vec[i]) << ","
              << double_to_hex(z_vec[i]) << ","
              << double_to_hex(vx_vec[i]) << ","
@@ -205,12 +182,13 @@ void gen_kepler_jump_step_csv(const std::string &filename_kepler, const std::str
              << double_to_hex(m_vec[i]) << "\n";
     }
 
-    whfast_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt);
+    // Do jump step
+    whfast_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt_half);
 
     // Print results to file_jump
     for (int i = 0; i < N_PLANETS; ++i)
     {
-        file_jump << double_to_hex(x_vec[i]) << ","
+        file << double_to_hex(x_vec[i]) << ","
              << double_to_hex(y_vec[i]) << ","
              << double_to_hex(z_vec[i]) << ","
              << double_to_hex(vx_vec[i]) << ","
@@ -219,7 +197,22 @@ void gen_kepler_jump_step_csv(const std::string &filename_kepler, const std::str
              << double_to_hex(m_vec[i]) << "\n";
     }
 
-    file_jump.close();
+    // Do interaction step
+    whfast_interaction_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt);
+
+    // Print results to file
+    for (int i = 0; i < N_PLANETS; ++i)
+    {
+        file << double_to_hex(x_vec[i]) << ","
+             << double_to_hex(y_vec[i]) << ","
+             << double_to_hex(z_vec[i]) << ","
+             << double_to_hex(vx_vec[i]) << ","
+             << double_to_hex(vy_vec[i]) << ","
+             << double_to_hex(vz_vec[i]) << ","
+             << double_to_hex(m_vec[i]) << "\n";
+    }
+
+    file.close();
 
     std::cout << "Done." << std::endl;
 }
@@ -362,7 +355,7 @@ int main() {
     // Generate Newton-Halley input CSV
     gen_newton_halley_csv("golden_newton_step.csv", "golden_halley_step.csv");
 
-    gen_kepler_jump_step_csv("golden_kepler_step.csv", "golden_jump_step.csv");
+    gen_integrate_step_csv("golden_integrate_step.csv");
 
     std::cout << "All golden vectors made." << std::endl;
 

@@ -3,6 +3,11 @@
 
 #include <array>
 #include <immintrin.h>
+#include <iomanip>
+#include <iostream>
+#include <sstream>
+
+std::string double_to_hex(double d);
 
 struct Body {
     std::array<double, 3> pos;

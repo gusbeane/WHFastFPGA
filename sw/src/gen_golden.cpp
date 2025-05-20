@@ -107,7 +107,40 @@ void output_to_csv(const std::array<Body, N_BODIES>& solarsystem, const std::str
     file.close();
 }
 
-void gen_golden(double tmax_inyr, double dt, const std::string& filename)
+double compute_energy(const std::array<Body, N_BODIES>& solarsystem, const Body& com) {
+    double total_energy = 0.0;
+    
+    double x, y, z;
+    double vx, vy, vz;
+
+    // compute kinetic energy
+    for (int i = 0; i < N_BODIES; ++i) {
+        x = solarsystem[i].pos[0] - com.pos[0];
+        y = solarsystem[i].pos[1] - com.pos[1];
+        z = solarsystem[i].pos[2] - com.pos[2];
+        vx = solarsystem[i].vel[0] - com.vel[0];
+        vy = solarsystem[i].vel[1] - com.vel[1];
+        vz = solarsystem[i].vel[2] - com.vel[2];
+
+        double kinetic_energy = 0.5 * solarsystem[i].mass * (vx * vx + vy * vy + vz * vz);
+        total_energy += kinetic_energy;
+    }
+
+    // compute potential energy
+    for (int i = 0; i < N_BODIES; ++i) {
+        for (int j = i + 1; j < N_BODIES; ++j) {
+            double dx = solarsystem[i].pos[0] - solarsystem[j].pos[0];
+            double dy = solarsystem[i].pos[1] - solarsystem[j].pos[1];
+            double dz = solarsystem[i].pos[2] - solarsystem[j].pos[2];
+            double r = sqrt(dx * dx + dy * dy + dz * dz);
+            total_energy -= (solarsystem[i].mass * solarsystem[j].mass) / r;
+        }
+    }
+    // std::cout << "Total energy: " << total_energy << " (" << double_to_hex(total_energy) << ")" << std::endl;
+    return total_energy;
+}
+
+double gen_golden(double tmax_inyr, double dt, const std::string& filename)
 {
     auto start = std::chrono::high_resolution_clock::now(); // Start timing
 
@@ -119,7 +152,9 @@ void gen_golden(double tmax_inyr, double dt, const std::string& filename)
     Body com;
     double tmax = 2.0 * M_PI * tmax_inyr; // 100 yr
     long Nint = static_cast<long>(tmax / dt);
-    whfast_integrate(solarsystem, &com, dt, Nint);
+    std::cout << "Nint=" << Nint << "  ";
+    if(Nint > 0)
+        whfast_integrate(solarsystem, &com, dt, Nint);
 
     // Output mass, position, and velocities of the particles
     output_to_csv(solarsystem, filename);
@@ -127,6 +162,8 @@ void gen_golden(double tmax_inyr, double dt, const std::string& filename)
     auto end = std::chrono::high_resolution_clock::now(); // End timing
     std::chrono::duration<double> elapsed = end - start;
     std::cout << "Done. Time taken: " << elapsed.count() << " seconds." << std::endl;
+
+    return compute_energy(solarsystem, com);
 }
 
 void gen_kepler_jump_step_csv(const std::string &filename_kepler, const std::string &filename_jump)
@@ -324,11 +361,27 @@ void gen_newton_halley_csv(const std::string &filename_newton, const std::string
 
 int main() {
     double dt = 5.0 / 365.25 * 2 * M_PI; // 5 days
-    gen_golden(1e2, dt, "solarsystem_100yr.csv");
+    double energy_ics  = gen_golden(0, dt, "solarsystem_ic.csv");
 
-    gen_golden(1e3, dt, "solarsystem_1kyr.csv");
+    double energy_1e2 = gen_golden(1e2, dt, "solarsystem_100yr.csv");
 
-    gen_golden(1e4, dt, "solarsystem_10kyr.csv");
+    double energy_1e3 = gen_golden(1e3, dt, "solarsystem_1kyr.csv");
+
+    double energy_1e4 = gen_golden(1e4, dt, "solarsystem_10kyr.csv");
+
+    // double energy_2e4 = gen_golden(2e4, dt, "solarsystem_20kyr.csv");
+    
+    // double energy_4e4 = gen_golden(4e4, dt, "solarsystem_40kyr.csv");
+    
+    // double energy_1e5 = gen_golden(1e5, dt, "solarsystem_100kyr.csv");
+
+    std::cout << "Energy difference (100 yr - ics): " << (energy_1e2 - energy_ics)/energy_ics << std::endl;
+    std::cout << "Energy difference (  1 kyr - ics): " << (energy_1e3 - energy_ics)/energy_ics << std::endl;
+    std::cout << "Energy difference ( 10 kyr - ics): " << (energy_1e4 - energy_ics)/energy_ics << std::endl;
+    // std::cout << "Energy difference ( 20 kyr - ics): " << (energy_2e4 - energy_ics)/energy_ics << std::endl;
+    // std::cout << "Energy difference ( 40 kyr - ics): " << (energy_4e4 - energy_ics)/energy_ics << std::endl;
+    // std::cout << "Energy difference (100 kyr - ics): " << (energy_1e5 - energy_ics)/energy_ics << std::endl;
+
 
     // Generate Stiefel function golden CSVs
     gen_stiefel_Gs03_csv("golden_stiefel_Gs03.csv");

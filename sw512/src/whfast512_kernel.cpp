@@ -1,6 +1,10 @@
 #include <stdio.h>
 #include "whfast512_kernel.h"
 #include "whfast512_constants.h"
+#include <sstream>
+#include <iomanip>
+#include <iostream>
+
 
 // Newton step function for Kepler iteration
 static void inline newton_step(__m512d* X, __m512d beta, __m512d r0, __m512d eta0, __m512d zeta0, __m512d _dt) {
@@ -383,6 +387,15 @@ void whfast512_interaction_step(__m512d *x_vec, __m512d *y_vec, __m512d *z_vec,
     }
 }
 
+// Helper to get hex string of a double
+std::string double_to_hex(double d) {
+    union { double d; uint64_t u; } u;
+    u.d = d;
+    std::ostringstream oss;
+    oss << std::hex << std::setw(16) << std::setfill('0') << u.u;
+    return oss.str();
+}
+
 void whfast512_kernel(__m512d *x_vec, __m512d *y_vec, __m512d *z_vec,
                       __m512d *vx_vec, __m512d *vy_vec, __m512d *vz_vec,
                       __m512d m_vec, Body *com, double dt, long Nint)
@@ -400,6 +413,26 @@ void whfast512_kernel(__m512d *x_vec, __m512d *y_vec, __m512d *z_vec,
 
         // Perform the interaction step
         whfast512_interaction_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt);
+
+        // Print all planets' state in hex
+        // for (int j = 0; j < 8; ++j) {
+        //     double x = ((double*)&(*x_vec))[j];
+        //     double y = ((double*)&(*y_vec))[j];
+        //     double z = ((double*)&(*z_vec))[j];
+        //     double vx = ((double*)&(*vx_vec))[j];
+        //     double vy = ((double*)&(*vy_vec))[j];
+        //     double vz = ((double*)&(*vz_vec))[j];
+        //     double m = ((double*)&m_vec)[j];
+        //     std::cout << "Planet " << j << ": "
+        //               << double_to_hex(x) << " | "
+        //               << double_to_hex(y) << " | "
+        //               << double_to_hex(z) << " | "
+        //               << double_to_hex(vx) << " | "
+        //               << double_to_hex(vy) << " | "
+        //               << double_to_hex(vz) << " | "
+        //               << double_to_hex(m) << std::endl;
+        // }
+        // exit(0);
 
         // Perform the jump step (second half)
         whfast512_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt / 2.0);

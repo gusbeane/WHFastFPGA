@@ -3,6 +3,10 @@
 #include "whfast_constants.h"
 #include <cmath>
 #include <limits>
+#include <string>
+#include <iomanip>
+#include <iostream>
+#include <sstream>
 
 // Scalar Stiefel function for Halley's method, returning Gs0, Gs1, Gs2, and Gs3
 inline void stiefel_Gs03(double *Gs0, double *Gs1, double *Gs2, double *Gs3, double beta, double X)
@@ -329,6 +333,15 @@ void whfast_interaction_step(double *x_vec, double *y_vec, double *z_vec,
     }
 }
 
+// Helper to get hex string of a double
+std::string double_to_hex(double d) {
+    union { double d; uint64_t u; } u;
+    u.d = d;
+    std::ostringstream oss;
+    oss << std::hex << std::setw(16) << std::setfill('0') << u.u;
+    return oss.str();
+}
+
 void whfast_kernel(double *x_vec, double *y_vec, double *z_vec,
                    double *vx_vec, double *vy_vec, double *vz_vec,
                    double *m_vec, Body *com, double dt, long Nint)
@@ -346,6 +359,18 @@ void whfast_kernel(double *x_vec, double *y_vec, double *z_vec,
 
         // Perform the interaction step
         whfast_interaction_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt);
+
+        // for (int j = 0; j < 8; ++j) {
+        //     std::cout << "Planet " << j << ": "
+        //               << double_to_hex(x_vec[j]) << " | "
+        //               << double_to_hex(y_vec[j]) << " | "
+        //               << double_to_hex(z_vec[j]) << " | "
+        //               << double_to_hex(vx_vec[j]) << " | "
+        //               << double_to_hex(vy_vec[j]) << " | "
+        //               << double_to_hex(vz_vec[j]) << " | "
+        //               << double_to_hex(m_vec[j]) << std::endl;
+        // }
+        // exit(0);
 
         // Perform the jump step (second half)
         whfast_jump_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, dt / 2.0);

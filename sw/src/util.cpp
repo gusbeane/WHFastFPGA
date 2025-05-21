@@ -13,6 +13,14 @@ std::string double_to_hex(double d) {
     return oss.str();
 }
 
+// Helper to get hex string of a long
+std::string long_to_hex(long l) {
+    std::ostringstream oss;
+    // print as unsigned to avoid sign issues, width equals number of hex digits for long
+    oss << std::hex << std::setw(sizeof(long) * 2) << std::setfill('0') << (unsigned long)l;
+    return oss.str();
+}
+
 struct Body compute_com(std::array<Body, N_BODIES> &bodies)
 {
     // This is defined in a weird way just to replicate the

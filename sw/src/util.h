@@ -9,6 +9,9 @@
 
 std::string double_to_hex(double d);
 
+// Add prototype for converting a long to hex string
+std::string long_to_hex(long l);
+
 struct Body {
     std::array<double, 3> pos;
     std::array<double, 3> vel;

@@ -322,6 +322,67 @@ void gen_newton_halley_csv(const std::string &filename_newton, const std::string
     file_halley.close();
 }
 
+void gen_kernel_step_csv(const std::string &filename)
+{
+    std::ofstream file("golden/" + filename);
+    std::cout << "Generating:" << filename << "... ";
+    // Generate 100 yr integration
+    std::array<Body, N_BODIES> solarsystem = solarsystem_ics;
+    move_to_center_of_mass(solarsystem);
+
+    double x_vec[N_PLANETS], y_vec[N_PLANETS], z_vec[N_PLANETS];
+    double vx_vec[N_PLANETS], vy_vec[N_PLANETS], vz_vec[N_PLANETS];
+    double m_vec[N_PLANETS];
+    Body com;
+    double dt = 5.0 / 365.25 * 2 * M_PI; // 5 days in radians
+    double dt_half = dt / 2.0;
+    long Nint = 100;
+
+    inertial_to_democraticheliocentric_posvel(solarsystem, &com, x_vec, y_vec, z_vec,
+                                              vx_vec, vy_vec, vz_vec, m_vec);
+
+    initialize_constants(solarsystem[0].mass, m_vec);
+
+    // First do half-drift step
+    whfast_drift_step(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, &com, dt_half);
+
+    // Print initial conditions to file
+    file << "x,y,z,vx,vy,vz,m\n";
+    file << "dt=" << double_to_hex(dt) << "\n";
+    file << "M0=" << double_to_hex(kConsts->M0) << "\n";
+    file << "Nint=" << long_to_hex(Nint) << "\n";
+    for (int i = 0; i < N_PLANETS; ++i)
+    {
+        file << double_to_hex(x_vec[i]) << ","
+             << double_to_hex(y_vec[i]) << ","
+             << double_to_hex(z_vec[i]) << ","
+             << double_to_hex(vx_vec[i]) << ","
+             << double_to_hex(vy_vec[i]) << ","
+             << double_to_hex(vz_vec[i]) << ","
+             << double_to_hex(m_vec[i]) << "\n";
+    }
+
+    // Now call the kernel Nint times
+    // In whfast_integrate, the kernel is called Nint-1 times
+    whfast_kernel(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, &com, dt, Nint-1);
+
+    // Print results
+    for (int i = 0; i < N_PLANETS; ++i)
+    {
+        file << double_to_hex(x_vec[i]) << ","
+             << double_to_hex(y_vec[i]) << ","
+             << double_to_hex(z_vec[i]) << ","
+             << double_to_hex(vx_vec[i]) << ","
+             << double_to_hex(vy_vec[i]) << ","
+             << double_to_hex(vz_vec[i]) << ","
+             << double_to_hex(m_vec[i]) << "\n";
+    }
+
+    file.close();
+
+    std::cout << "Done." << std::endl;
+}
+
 int main() {
     double dt = 5.0 / 365.25 * 2 * M_PI; // 5 days
     double energy_ics  = gen_golden(0, dt, "solarsystem_ic.csv");
@@ -344,8 +405,6 @@ int main() {
     // std::cout << "Energy difference ( 20 kyr - ics): " << (energy_2e4 - energy_ics)/energy_ics << std::endl;
     // std::cout << "Energy difference ( 40 kyr - ics): " << (energy_4e4 - energy_ics)/energy_ics << std::endl;
     // std::cout << "Energy difference (100 kyr - ics): " << (energy_1e5 - energy_ics)/energy_ics << std::endl;
-    
-
 
     // Generate Stiefel function golden CSVs
     gen_stiefel_Gs03_csv("golden_stiefel_Gs03.csv");
@@ -354,7 +413,11 @@ int main() {
     // Generate Newton-Halley input CSV
     gen_newton_halley_csv("golden_newton_step.csv", "golden_halley_step.csv");
 
+    // Generate integration step CSV
     gen_integrate_step_csv("golden_integrate_step.csv");
+
+    // Generate kernel step CSV
+    gen_kernel_step_csv("golden_kernel_step.csv");
 
     std::cout << "All golden vectors made." << std::endl;
 

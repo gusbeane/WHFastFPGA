@@ -364,7 +364,7 @@ void gen_kernel_step_csv(const std::string &filename)
 
     // Now call the kernel Nint times
     // In whfast_integrate, the kernel is called Nint-1 times
-    whfast_kernel(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, &com, dt, Nint-1);
+    whfast_kernel(x_vec, y_vec, z_vec, vx_vec, vy_vec, vz_vec, m_vec, &com, dt, Nint);
 
     // Print results
     for (int i = 0; i < N_PLANETS; ++i)

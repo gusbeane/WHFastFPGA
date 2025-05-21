@@ -1,6 +1,7 @@
 #include "kepler.h"
 #include "jump.h"
 #include "interaction.h"
+#include "whfast.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -22,6 +23,15 @@ static double hex_to_double(const std::string& hexstr) {
     double d;
     std::memcpy(&d, &u, sizeof(double));
     return d;
+}
+
+// Helper to convert hex string to long (matches long_to_hex)
+static long hex_to_long(const std::string& hexstr) {
+    unsigned long ul = 0;
+    std::stringstream ss;
+    ss << std::hex << hexstr;
+    ss >> ul;
+    return static_cast<long>(ul);
 }
 
 // Enum for Stiefel mode
@@ -387,6 +397,21 @@ real_t read_header_line(std::ifstream& file, const std::string& fname) {
     return hex_to_double(hex_value);
 }
 
+long read_header_line_long(std::ifstream& file, const std::string& fname) {
+    std::string line;
+    if (!std::getline(file, line)) {
+        std::cerr << "Error reading dt from " << fname << std::endl;
+        std::exit(1);
+    }
+    size_t eqpos = line.find('=');
+    if (eqpos == std::string::npos) {
+        std::cerr << "Malformed line in " << line << std::endl;
+        std::exit(1);
+    }
+    std::string hex_value = line.substr(eqpos + 1);
+    return hex_to_long(hex_value);
+}
+
 struct bodies_t read_particle_block(std::ifstream& file, const std::string& fname) {
     bodies_t result;
     std::string line;
@@ -518,6 +543,63 @@ void test_integrate_step() {
     test_single_step(ss_out, ss_gold, "test_integrate_step_interact");
 }
 
+// Struct for golden data
+struct KernelGoldenSet {
+    double M0, dt, dt_half; // Added dt_half
+    long Nint;
+    bodies_t ss_ics;
+    bodies_t ss_kernel;
+};
+
+KernelGoldenSet read_kernel_golden() {
+    KernelGoldenSet result;
+    std::string fname = "golden_kernel_step.csv";
+    
+    std::ifstream file(fname);
+    if (!file.is_open()) {
+        std::cerr << "Error opening " << fname << std::endl;
+        std::exit(1);
+    }
+    
+    std::string line;
+
+    // Skip x,y,z,vx,vy,vz,m header
+    if (!std::getline(file, line)) {
+        std::cerr << "Error reading header from " << fname << std::endl;
+        std::exit(1);
+    }
+    
+    // Read dt line (format: dt=hexnumber)
+    result.dt = read_header_line(file, fname);
+
+    // Read dt_half line (format: dt_half=hexnumber)
+    // result.dt_half = read_header_line(file, fname);
+    
+    // Read M0 line (format: M0=hexnumber)
+    result.M0 = read_header_line(file, fname);
+
+    result.Nint = read_header_line_long(file, fname);
+    std::cout << "Nint: " << result.Nint << std::endl;
+
+    // Read ics
+    result.ss_ics = read_particle_block(file, fname);
+    // Read golden step
+    result.ss_kernel = read_particle_block(file, fname);
+
+    file.close();
+    return result;
+}
+
+void test_kernel_step() {
+    struct KernelGoldenSet krnl_gold = read_kernel_golden();
+    
+    // Run computation
+    bodies_t ss_ics = krnl_gold.ss_ics;
+    bodies_t ss_out = whfast_kernel(ss_ics, krnl_gold.M0, krnl_gold.dt, krnl_gold.Nint);
+    bodies_t ss_gold = krnl_gold.ss_kernel;
+    test_single_step(ss_out, ss_gold, "test_kernel");
+}
+
 int main()
 {
     // ---------------------------
@@ -536,5 +618,10 @@ int main()
     // Integrate tests
     // ---------------------------
     test_integrate_step();
+
+    // ---------------------------
+    // Kernel tests
+    // ---------------------------
+    test_kernel_step();
 
 }

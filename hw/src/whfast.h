@@ -21,4 +21,6 @@ struct bodies_t
     real_t m_vec[N_PLANETS];
 };
 
+struct bodies_t whfast_kernel(struct bodies_t ss, real_t M0, real_t dt, long Nint   );
+
 #endif // WHFAST_H

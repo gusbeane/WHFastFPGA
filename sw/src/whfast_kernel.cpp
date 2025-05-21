@@ -288,6 +288,16 @@ void whfast_interaction_step(double *x_vec, double *y_vec, double *z_vec,
                              double *m_vec, double dt)
 {
 
+#ifdef PRINT_INTERACTION_MOMENTUM
+    double px0 = 0.0, py0 = 0.0, pz0 = 0.0;
+    for (int i = 0; i < N_PLANETS; ++i)
+    {
+        px0 += m_vec[i] * vx_vec[i];
+        py0 += m_vec[i] * vy_vec[i];
+        pz0 += m_vec[i] * vz_vec[i];
+    }
+#endif
+
     double star_dvx = 0.0, star_dvy = 0.0, star_dvz = 0.0;
     for (int i = 0; i < N_PLANETS; ++i)
     {
@@ -299,28 +309,34 @@ void whfast_interaction_step(double *x_vec, double *y_vec, double *z_vec,
         double dvx_i = invr4 * xi;
         double dvy_i = invr4 * yi;
         double dvz_i = invr4 * zi;
-        vxi -= dvx_i;
-        vyi -= dvy_i;
-        vzi -= dvz_i;
+        vx_vec[i] -= dvx_i;
+        vy_vec[i] -= dvy_i;
+        vz_vec[i] -= dvz_i;
         star_dvx += kConsts->gr_prefac2[i] * dvx_i;
         star_dvy += kConsts->gr_prefac2[i] * dvy_i;
         star_dvz += kConsts->gr_prefac2[i] * dvz_i;
-        for (int j = 0; j < N_PLANETS; ++j)
-        {
-            if (i == j)
-                continue;
-            double dx = xi - x_vec[j];
-            double dy = yi - y_vec[j];
-            double dz = zi - z_vec[j];
-            double pref = gravity_prefactor(m_vec[j], dx, dy, dz) * dt;
-            vxi -= pref * dx;
-            vyi -= pref * dy;
-            vzi -= pref * dz;
-        }
-        vx_vec[i] = vxi;
-        vy_vec[i] = vyi;
-        vz_vec[i] = vzi;
     }
+
+    for (int i = 0; i < N_PLANETS; ++i)
+    {
+        for (int j = 0; j < i; ++j)
+        {
+            double dx = x_vec[i] - x_vec[j];
+            double dy = y_vec[i] - y_vec[j];
+            double dz = z_vec[i] - z_vec[j];
+            double invr3 = gravity_prefactor_one(dx, dy, dz) * dt;
+            double pref = m_vec[j] * invr3;
+            vx_vec[i] -= pref * dx;
+            vy_vec[i] -= pref * dy;
+            vz_vec[i] -= pref * dz;
+
+            pref = m_vec[i] * invr3;
+            vx_vec[j] += pref * dx;
+            vy_vec[j] += pref * dy;
+            vz_vec[j] += pref * dz;
+        }
+    }
+
     // Apply back-reaction onto star to all planets
     for (int i = 0; i < N_PLANETS; ++i)
     {
@@ -328,6 +344,20 @@ void whfast_interaction_step(double *x_vec, double *y_vec, double *z_vec,
         vy_vec[i] -= star_dvy;
         vz_vec[i] -= star_dvz;
     }
+
+#ifdef PRINT_INTERACTION_MOMENTUM
+    double px = 0.0, py = 0.0, pz = 0.0;
+    for (int i = 0; i < N_PLANETS; ++i)
+    {
+        px += m_vec[i] * vx_vec[i];
+        py += m_vec[i] * vy_vec[i];
+        pz += m_vec[i] * vz_vec[i];
+    }
+    std::cout << "px-px0: " << px - px0 << " | "
+              << "py-py0: " << py - py0 << " | "
+              << "pz-pz0: " << pz - pz0 << std::endl;
+    exit(0);
+#endif // PRINT_INTERACTION_MOMENTUM
 }
 
 void whfast_kernel(double *x_vec, double *y_vec, double *z_vec,

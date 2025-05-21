@@ -20,9 +20,13 @@ struct bodies_t whfast_kernel(struct bodies_t ss, real_t M0, real_t dt, long Nin
     #pragma HLS array_partition variable = ss.vz_vec complete
     #pragma HLS array_partition variable = ss.m_vec complete
 
+    #pragma HLS ALLOCATION function instances=jump_step limit=1
+    #pragma HLS ALLOCATION function instances=interaction_step limit=1
+
 whfast_kernel_loop:
     for (int i = 0; i < Nint; i++)
     {
+#pragma HLS unroll off
 #pragma HLS loop_tripcount min = 1 max = 2
         // Perform the jump step (first half)
         ss = jump_step(ss, M0, dt_half1);

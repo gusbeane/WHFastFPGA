@@ -19,8 +19,13 @@ struct bodies_t
     real_t vy_vec[N_PLANETS];
     real_t vz_vec[N_PLANETS];
     real_t m_vec[N_PLANETS];
+
+    real_t gr_prefac;
+    real_t gr_prefac2[N_PLANETS];
 };
 
-struct bodies_t whfast_kernel(struct bodies_t ss, real_t M0, real_t dt, long Nint   );
+bodies_t set_gr_prefac(bodies_t ss, real_t M0);
+
+bodies_t whfast_kernel(bodies_t ss, real_t M0, real_t dt, long Nint);
 
 #endif // WHFAST_H

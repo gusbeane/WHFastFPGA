@@ -5,6 +5,7 @@
 
 struct bodies_t set_gr_prefac(struct bodies_t ss, real_t M0)
 {
+#pragma HLS inline
     real_t c_val = R(10065.32);
     ss.gr_prefac = R(6.) * M0 * M0 / (c_val * c_val);
     for (int i = 0; i < N_PLANETS; i++)
@@ -35,14 +36,15 @@ struct bodies_t whfast_kernel(struct bodies_t ss, real_t M0, real_t dt, long Nin
     #pragma HLS array_partition variable = ss.m_vec complete
 #pragma HLS array_partition variable = ss.gr_prefac2 complete
 
-#pragma HLS ALLOCATION function instances = jump_step limit = 1
-#pragma HLS ALLOCATION function instances = interaction_step limit = 1
+// #pragma HLS ALLOCATION function instances = jump_step limit = 2
+// #pragma HLS ALLOCATION function instances = interaction_step limit = 1
+// #pragma HLS ALLOCATION function instances = kepler_step limit = 1
 
 whfast_kernel_loop:
     for (int i = 0; i < Nint; i++)
     {
 #pragma HLS unroll off
-#pragma HLS loop_tripcount min = 1 max = 2
+#pragma HLS loop_tripcount min = 1 max = 3
         // Perform the jump step (first half)
         ss = jump_step(ss, M0, dt_half1);
 

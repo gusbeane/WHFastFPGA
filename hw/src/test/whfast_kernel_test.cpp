@@ -47,7 +47,7 @@ struct StiefelGolden {
 std::vector<StiefelGolden> read_stiefel_golden(StiefelMode mode) {
     std::vector<StiefelGolden> data;
     std::string fname = (mode == GS03) ? "golden_stiefel_Gs03.csv" : "golden_stiefel_Gs13.csv";
-    std::ifstream file(fname);
+    std::ifstream file("golden/" + fname);
     if (!file.is_open()) {
         std::cerr << "Error opening " << fname << std::endl;
         std::exit(1);
@@ -144,7 +144,7 @@ struct NewtonHalleyGoldenSet {
 NewtonHalleyGoldenSet read_newton_halley_golden(NewtonHalleyMode mode) {
     NewtonHalleyGoldenSet result;
     std::string fname = (mode == NEWTON) ? "golden_newton_step.csv" : "golden_halley_step.csv";
-    std::ifstream file(fname);
+    std::ifstream file("golden/" + fname);
     if (!file.is_open()) {
         std::cerr << "Error opening " << fname << std::endl;
         std::exit(1);
@@ -304,7 +304,7 @@ IntegrateGoldenSet read_integrate_golden() {
     IntegrateGoldenSet result;
     std::string fname = "golden_integrate_step.csv";
     
-    std::ifstream file(fname);
+    std::ifstream file("golden/" + fname);
     if (!file.is_open()) {
         std::cerr << "Error opening " << fname << std::endl;
         std::exit(1);
@@ -420,7 +420,7 @@ KernelGoldenSet read_kernel_golden() {
     KernelGoldenSet result;
     std::string fname = "golden_kernel_step.csv";
     
-    std::ifstream file(fname);
+    std::ifstream file("golden/" + fname);
     if (!file.is_open()) {
         std::cerr << "Error opening " << fname << std::endl;
         std::exit(1);

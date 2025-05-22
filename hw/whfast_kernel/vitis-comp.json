@@ -1,0 +1,12 @@
+{
+  "name": "whfast_kernel",
+  "type": "HLS",
+  "configuration": {
+    "componentType": "HLS",
+    "configFiles": [
+      "hls_config.cfg"
+    ],
+    "work_dir": "whfast_kernel"
+  },
+  "template": "empty_hls_component"
+}

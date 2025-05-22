@@ -34,12 +34,12 @@ sw512/build/
 # ----------------------------------------
 # HLS/Vitis session, config & report files
 hw/.analyzer_session.json
-hw/**/hls_config.cfg
+# hw/**/hls_config.cfg
 hw/**/*.hlscompile_summary
 hw/**/*.hlsrun_csim_summary
 hw/**/reports/
 hw/**/.db/
-hw/**/vitis-comp.json
+# hw/**/vitis-comp.json
 
 # HLS run and implementation folders
 hw/**/hls/

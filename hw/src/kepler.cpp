@@ -230,11 +230,11 @@ real_t newton_step(real_t X, real_t beta, real_t r0, real_t eta0, real_t zeta0, 
 struct bodies_t kepler_step(struct bodies_t ss, real_t M0, real_t dt)
 {
 #pragma HLS inline off
-#pragma HLS pipeline II = 1
+#pragma HLS pipeline II = 10
 
     for (int i = 0; i < N_PLANETS; i++)
     {
-#pragma HLS UNROLL factor=N_PLANETS
+#pragma HLS UNROLL
 
         real_t r2, r0, r01, v2;
         real_t beta, eta0, zeta0;
